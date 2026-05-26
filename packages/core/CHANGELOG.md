@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/ikenxuan/qrcode/compare/v1.0.1...v1.0.2) (2026-05-26)
+
+
+### 🐛 错误修复
+
+* ci ([2c79439](https://github.com/ikenxuan/qrcode/commit/2c79439a729d1c9fb4e4fcd9b15dd383cfe592a7))
+* ci ([8a6e1ff](https://github.com/ikenxuan/qrcode/commit/8a6e1ffb76bd9235509e604057e48853b07c1615))
+
 ## [1.0.1](https://github.com/ikenxuan/qrcode/compare/v1.0.0...v1.0.1) (2026-05-26)
 
 
