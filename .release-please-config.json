@@ -3,15 +3,15 @@
   "include-component-in-tag": false,
   "commit-search-depth": 50,
   "include-commit-authors": true,
+  "extra-files": [
+    "packages/wasm/Cargo.toml",
+    "packages/wasm/package.json"
+  ],
   "packages": {
     "packages/core": {
       "release-type": "node",
       "package-name": "@ikenxuan/qrcode",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        "packages/wasm/Cargo.toml",
-        "packages/wasm/package.json"
-      ]
+      "changelog-path": "CHANGELOG.md"
     }
   },
   "changelog-sections": [
