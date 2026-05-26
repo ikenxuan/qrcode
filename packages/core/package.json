@@ -18,7 +18,7 @@
     "package.json"
   ],
   "scripts": {
-    "build": "tsdown && npm run test",
+    "build": "tsdown && pnpm run test",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -50,5 +50,5 @@
     "vite-plugin-wasm": "^3.6.0",
     "vitest": "^4.1.7"
   },
-  "timestamp": "2026-05-27 06:37:32"
+  "timestamp": "2026-05-27 06:51:47"
 }
