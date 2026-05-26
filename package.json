@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "pnpm build:wasm && pnpm build:core",
+    "build:wasm": "pnpm --filter @ikenxuan/qrcode-wasm build",
+    "build:core": "pnpm --filter @ikenxuan/qrcode build"
+  }
+}

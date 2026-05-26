@@ -1,0 +1,40 @@
+{
+  "name": "@ikenxuan/qrcode",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "基于 Rust qr-code-styling 的高性能 QR 码生成器",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "tsdown && npm run test",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "qrcode",
+    "wasm",
+    "qr-code-styling"
+  ],
+  "author": "ikenxuan",
+  "license": "MIT",
+  "devDependencies": {
+    "@ikenxuan/qrcode-wasm": "workspace:*",
+    "rolldown-plugin-wasm": "^0.2.1",
+    "tsdown": "0.22.0",
+    "typescript": "^6.0.3",
+    "vite-plugin-wasm": "^3.6.0",
+    "vitest": "^4.1.7"
+  }
+}

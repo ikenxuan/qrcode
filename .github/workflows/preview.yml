@@ -1,0 +1,84 @@
+name: Preview
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "!**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build wasm
+        run: pnpm build:wasm
+
+      - name: Build core
+        run: pnpm build:core
+
+      - name: Run tests
+        run: pnpm --filter @ikenxuan/qrcode test
+
+      - name: Publish to pkg.pr.new
+        id: publish
+        run: pnpm dlx pkg-pr-new publish --comment=off './packages/core'
+
+      - name: Generate short sha
+        id: short-sha
+        run: |
+          FULL_SHA="${{ steps.publish.outputs.sha }}"
+          SHORT_SHA="${FULL_SHA:0:7}"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          message: |
+            ## 📦 预览包发布成功
+
+            ### 🏷️ 包信息
+            - **包名:** `@ikenxuan/qrcode`
+            - **提交:** [`${{ steps.short-sha.outputs.short_sha }}`](https://github.com/${{ github.repository }}/tree/${{ github.sha }})
+
+            ### 📥 安装命令
+            ```bash
+            npm i https://pkg.pr.new/@ikenxuan/qrcode@${{ steps.short-sha.outputs.short_sha }}
+            ```
+          comment-tag: preview-package
+          mode: upsert
+          reactions: rocket
