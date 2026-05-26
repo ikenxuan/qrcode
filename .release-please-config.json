@@ -9,8 +9,8 @@
       "package-name": "@ikenxuan/qrcode",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
-        "../wasm/Cargo.toml",
-        "../wasm/package.json"
+        "packages/wasm/Cargo.toml",
+        "packages/wasm/package.json"
       ]
     }
   },
