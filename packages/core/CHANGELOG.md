@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/ikenxuan/qrcode/compare/v1.0.3...v1.1.0) (2026-05-26)
+
+
+### ✨ 新功能
+
+* 支持更多颜色函数 ([557f099](https://github.com/ikenxuan/qrcode/commit/557f0991240fad43f7ce2909ed33a41480a36ab9))
+
 ## [1.0.3](https://github.com/ikenxuan/qrcode/compare/v1.0.2...v1.0.3) (2026-05-26)
 
 
