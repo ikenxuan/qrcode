@@ -3,17 +3,26 @@
   "include-component-in-tag": false,
   "commit-search-depth": 50,
   "include-commit-authors": true,
-  "extra-files": [
-    "packages/wasm/Cargo.toml",
-    "packages/wasm/package.json"
-  ],
   "packages": {
     "packages/core": {
       "release-type": "node",
       "package-name": "@ikenxuan/qrcode",
       "changelog-path": "CHANGELOG.md"
+    },
+    "packages/wasm": {
+      "release-type": "rust",
+      "package-name": "qrcode-wasm",
+      "skip-github-release": true,
+      "skip-changelog": true
     }
   },
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "qrcode",
+      "components": ["@ikenxuan/qrcode", "qrcode-wasm"]
+    }
+  ],
   "changelog-sections": [
     {
       "type": "feat",

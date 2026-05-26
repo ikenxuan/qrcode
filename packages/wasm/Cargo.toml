@@ -1,6 +1,6 @@
 [package]
 name = "qrcode-wasm"
-version = "1.0.2" # x-release-please-version
+version = "1.0.2"
 edition = "2021"
 license = "MIT"
 
