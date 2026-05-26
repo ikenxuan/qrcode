@@ -755,7 +755,7 @@ dependencies = [
 
 [[package]]
 name = "qrcode-wasm"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "image",
  "qr-code-styling",
