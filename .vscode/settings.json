@@ -1,0 +1,6 @@
+{
+  "rust-analyzer.linkedProjects": [
+    "packages/wasm/Cargo.toml"
+  ],
+  "js/ts.experimental.useTsgo": true
+}

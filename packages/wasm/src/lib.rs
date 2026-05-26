@@ -1,10 +1,13 @@
 use qr_code_styling::{
-    config::{BackgroundOptions, Color, CornersSquareOptions, CornersDotOptions, DotsOptions, Gradient, ImageOptions},
+    config::{BackgroundOptions, CornersSquareOptions, CornersDotOptions, DotsOptions, Gradient, ImageOptions},
     types::{CornerDotType, CornerSquareType, DotType},
     OutputFormat, QRCodeStyling, ShapeType,
 };
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
+
+mod color;
+use color::parse_color;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -67,10 +70,6 @@ struct QRCodeOpts {
     background_options: Option<BackgroundOpts>,
     image: Option<Vec<u8>>,
     image_options: Option<ImgOpts>,
-}
-
-fn parse_color(hex: &str) -> Color {
-    Color::from_hex(hex).unwrap_or(Color::rgb(0, 0, 0))
 }
 
 fn parse_gradient(g: &GradientOpts) -> Gradient {

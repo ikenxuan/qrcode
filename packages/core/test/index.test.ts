@@ -139,3 +139,129 @@ describe('generate - 样式组合', () => {
     writeFileSync(resolve(outDir, '11-全配置组合.png'), buf)
   })
 })
+
+describe('generate - 颜色格式支持', () => {
+  it('rgba() 半透明颜色', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'rounded', color: 'rgba(0, 0, 0, 0.5)' },
+      backgroundOptions: { transparent: true },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+    expect(buf[0]).toBe(0x89)
+    writeFileSync(resolve(outDir, '18-rgba半透明.png'), buf)
+  })
+
+  it('rgb() 颜色', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'rounded', color: 'rgb(255, 0, 128)' },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+  })
+
+  it('rgb() CSS4 空格语法带 alpha', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'rounded', color: 'rgb(255 0 0 / 0.5)' },
+      backgroundOptions: { transparent: true },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+  })
+
+  it('hsl() 颜色', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'rounded', color: 'hsl(240, 100%, 50%)' },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+  })
+
+  it('hsla() 半透明颜色', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'rounded', color: 'hsla(0, 100%, 50%, 0.5)' },
+      backgroundOptions: { transparent: true },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+  })
+
+  it('hsl() CSS4 空格语法带 alpha', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'dots', color: 'hsl(120deg 80% 40% / 0.7)' },
+      backgroundOptions: { transparent: true },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+  })
+
+  it('oklab() 颜色', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'rounded', color: 'oklab(0.5 0.1 -0.1)' },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+  })
+
+  it('oklab() 带 alpha', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'rounded', color: 'oklab(0.5 0.1 -0.1 / 0.6)' },
+      backgroundOptions: { transparent: true },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+  })
+
+  it('oklch() 颜色', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'rounded', color: 'oklch(0.7 0.15 150)' },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+    writeFileSync(resolve(outDir, '19-oklch颜色.png'), buf)
+  })
+
+  it('oklch() 带 deg 和 alpha', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      dotsOptions: { dotType: 'dots', color: 'oklch(0.6 0.2 30deg / 50%)' },
+      backgroundOptions: { transparent: true },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+  })
+
+  it('命名颜色 transparent', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'test',
+      cornersSquareOptions: { cornerType: 'extra-rounded', color: 'red' },
+      cornersDotOptions: { cornerType: 'dot', color: 'blue' },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+  })
+
+  it('多种颜色格式混合使用', async () => {
+    const { generate } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'https://github.com/ikenxuan',
+      size: 400,
+      dotsOptions: { dotType: 'rounded', color: 'oklch(0.6 0.15 250)' },
+      cornersSquareOptions: { cornerType: 'extra-rounded', color: 'hsl(200, 80%, 50%)' },
+      cornersDotOptions: { cornerType: 'dot', color: 'rgba(255, 100, 0, 0.8)' },
+      backgroundOptions: { transparent: true },
+    }, 'webp')
+    expect(buf).toBeInstanceOf(Uint8Array)
+    expect(String.fromCharCode(...buf.slice(0, 4))).toBe('RIFF')
+    writeFileSync(resolve(outDir, '20-混合颜色格式.webp'), buf)
+  })
+})

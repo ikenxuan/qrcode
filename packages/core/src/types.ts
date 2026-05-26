@@ -63,20 +63,36 @@ export type Encoding = 'binary' | 'base64'
 /** 根据编码方式推导返回类型 */
 export type GenerateResult<E extends Encoding> = E extends 'base64' ? string : Uint8Array<ArrayBuffer>
 
+/**
+ * CSS 颜色字符串
+ *
+ * 支持以下格式：
+ * - hex: `#RGB`, `#RRGGBB`, `#RRGGBBAA`
+ * - rgb/rgba: `rgb(r, g, b)`, `rgba(r, g, b, a)`, `rgb(r g b / a)`
+ * - hsl/hsla: `hsl(h, s%, l%)`, `hsla(h, s%, l%, a)`, `hsl(h s% l% / a)`
+ * - oklab: `oklab(L a b)`, `oklab(L a b / alpha)`
+ * - oklch: `oklch(L C H)`, `oklch(L C H / alpha)`
+ * - 命名颜色: `transparent`, `black`, `white`, `red`, `green`, `blue`,
+ *   `yellow`, `cyan`, `magenta`, `orange`, `purple`, `gray`
+ *
+ * alpha 值支持小数 (0~1) 或百分比 (0%~\100%)
+ */
+export type CSSColor = string
+
 /** 渐变色配置 */
 export interface Gradient {
-  /** 渐变起始颜色，十六进制格式 */
-  colorFrom: string
-  /** 渐变结束颜色，十六进制格式 */
-  colorTo: string
+  /** 渐变起始颜色 (支持所有 {@link CSSColor} 格式) */
+  colorFrom: CSSColor
+  /** 渐变结束颜色 (支持所有 {@link CSSColor} 格式) */
+  colorTo: CSSColor
 }
 
 /** 点阵样式配置 */
 export interface DotsOptions {
   /** 点阵形状类型 */
   dotType: DotType
-  /** 点阵颜色，十六进制格式，与 gradient 互斥 */
-  color?: string
+  /** 点阵颜色 (支持所有 {@link CSSColor} 格式)，与 gradient 互斥 */
+  color?: CSSColor
   /** 点阵渐变色配置，与 color 互斥 */
   gradient?: Gradient
 }
@@ -85,8 +101,8 @@ export interface DotsOptions {
 export interface CornersSquareOptions {
   /** 定位角方块形状类型 */
   cornerType: CornerSquareType
-  /** 颜色，十六进制格式 */
-  color?: string
+  /** 颜色 (支持所有 {@link CSSColor} 格式) */
+  color?: CSSColor
   /** 渐变色配置 */
   gradient?: Gradient
 }
@@ -95,8 +111,8 @@ export interface CornersSquareOptions {
 export interface CornersDotOptions {
   /** 定位角内部点形状类型 */
   cornerType: CornerDotType
-  /** 颜色，十六进制格式 */
-  color?: string
+  /** 颜色 (支持所有 {@link CSSColor} 格式) */
+  color?: CSSColor
   /** 渐变色配置 */
   gradient?: Gradient
 }
@@ -113,8 +129,8 @@ export interface ImageOptions {
 
 /** 背景配置 */
 export interface BackgroundOptions {
-  /** 背景颜色，十六进制格式。设置 transparent 时忽略 */
-  color?: string
+  /** 背景颜色 (支持所有 {@link CSSColor} 格式)。设置 transparent 时忽略 */
+  color?: CSSColor
   /** 是否透明背景 */
   transparent?: boolean
   /** 背景渐变色配置 */
