@@ -30,6 +30,9 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v6
 
@@ -37,6 +40,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -63,15 +67,12 @@ jobs:
       - name: Run tests
         run: pnpm --filter @ikenxuan/qrcode test
 
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
       - name: Publish to npm
-        run: |
-          cd packages/core
-          pnpm config set provenance true
-          pnpm config set registry https://registry.npmjs.org/
-          npm config set //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
-          pnpm publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+        working-directory: packages/core
 
       - name: Sync to Taobao Mirror
         run: |
