@@ -1,6 +1,6 @@
 {
   "name": "@ikenxuan/qrcode",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "基于 Rust qr-code-styling + rxing 的高性能 QR 码生成与扫描工具",
   "main": "dist/index.js",
