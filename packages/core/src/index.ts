@@ -6,7 +6,7 @@
  *
  * @packageDocumentation
  */
-import { generate as _generate, generateSvg as _generateSvg } from '@ikenxuan/qrcode-wasm'
+import { generate as _generate, generateSvg as _generateSvg, scan as _scan } from '@ikenxuan/qrcode-wasm'
 import { DotType, CornerSquareType, CornerDotType, ShapeType, OutputFormat, type QRCodeOptions, type Encoding, type GenerateResult, type Gradient, type DotsOptions, type CornersSquareOptions, type CornersDotOptions, type ImageOptions, type BackgroundOptions } from './types.js'
 
 export { DotType, CornerSquareType, CornerDotType, ShapeType, OutputFormat }
@@ -45,4 +45,16 @@ export function generate<E extends Encoding = 'binary'> (
  */
 export function generateSvg (options: QRCodeOptions): string {
   return _generateSvg(options)
+}
+
+/**
+ * 扫描图片中的 QR 码
+ *
+ * 支持 PNG、JPEG、WebP 格式的图片数据
+ *
+ * @param imageData - 图片文件的二进制数据
+ * @returns QR 码内容字符串，未识别到则返回 null
+ */
+export function scan (imageData: Uint8Array): string | null {
+  return _scan(imageData) ?? null
 }

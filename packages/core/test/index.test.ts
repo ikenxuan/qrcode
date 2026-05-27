@@ -265,3 +265,47 @@ describe('generate - 颜色格式支持', () => {
     writeFileSync(resolve(outDir, '20-混合颜色格式.webp'), buf)
   })
 })
+
+describe('scan - 二维码扫描', () => {
+  it('扫描 PNG 格式二维码', async () => {
+    const { generate, scan } = await import('../dist/index.js')
+    const png = generate({ data: 'https://example.com' }, 'png')
+    const result = scan(png)
+    expect(result).toBe('https://example.com')
+  })
+
+  it('扫描 WebP 格式二维码', async () => {
+    const { generate, scan } = await import('../dist/index.js')
+    const webp = generate({ data: 'hello world' }, 'webp')
+    const result = scan(webp)
+    expect(result).toBe('hello world')
+  })
+
+  it('扫描带样式的二维码', async () => {
+    const { generate, scan } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'https://github.com/ikenxuan',
+      size: 400,
+      dotsOptions: { dotType: 'square', color: '#333333' },
+      cornersSquareOptions: { cornerType: 'square', color: '#667eea' },
+    }, 'png')
+    const result = scan(buf)
+    expect(result).toBe('https://github.com/ikenxuan')
+  })
+
+  it('扫描透明背景二维码', async () => {
+    const { generate, scan } = await import('../dist/index.js')
+    const buf = generate({
+      data: 'transparent-test',
+      backgroundOptions: { transparent: true },
+    }, 'png')
+    const result = scan(buf)
+    expect(result).toBe('transparent-test')
+  })
+
+  it('无效图片数据返回 null', async () => {
+    const { scan } = await import('../dist/index.js')
+    const result = scan(new Uint8Array([0, 1, 2, 3]))
+    expect(result).toBeNull()
+  })
+})
