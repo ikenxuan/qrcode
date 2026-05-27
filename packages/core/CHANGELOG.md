@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/ikenxuan/qrcode/compare/v1.1.0...v1.2.0) (2026-05-27)
+
+
+### ✨ 新功能
+
+* scan ([#7](https://github.com/ikenxuan/qrcode/issues/7)) ([18ffd9f](https://github.com/ikenxuan/qrcode/commit/18ffd9f244ec18ea58b1976f63796f0fa492d17c))
+
 ## [1.1.0](https://github.com/ikenxuan/qrcode/compare/v1.0.3...v1.1.0) (2026-05-26)
 
 
