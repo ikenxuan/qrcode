@@ -7,7 +7,11 @@ use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 mod color;
+mod scan;
 use color::parse_color;
+use scan::scan_qr;
+
+// ─── 配置结构体（从 JS 侧反序列化） ───────────────────────────────────────────
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -72,6 +76,8 @@ struct QRCodeOpts {
     image_options: Option<ImgOpts>,
 }
 
+// ─── 类型映射 ──────────────────────────────────────────────────────────────────
+
 fn parse_gradient(g: &GradientOpts) -> Gradient {
     Gradient::simple_linear(parse_color(&g.color_from), parse_color(&g.color_to))
 }
@@ -102,6 +108,7 @@ fn map_corner_dot_type(s: &str) -> CornerDotType {
     }
 }
 
+/// 根据配置构建 QRCodeStyling 实例
 fn build_qr(opts: QRCodeOpts) -> Result<QRCodeStyling, String> {
     let mut builder = QRCodeStyling::builder();
     builder = builder.data(&opts.data);
@@ -190,6 +197,10 @@ fn build_qr(opts: QRCodeOpts) -> Result<QRCodeStyling, String> {
     builder.build().map_err(|e| format!("{e}"))
 }
 
+/// 生成 QR 码光栅图（PNG/JPEG/WebP）
+///
+/// 当配置了透明背景且输出格式为 PNG/WebP 时，走 SVG → resvg 渲染路径
+/// 以保留 alpha 通道；否则直接使用 qr-code-styling 内置渲染。
 #[wasm_bindgen]
 pub fn generate(options: JsValue, format: &str) -> Result<Vec<u8>, JsError> {
     let opts: QRCodeOpts =
@@ -218,6 +229,10 @@ pub fn generate(options: JsValue, format: &str) -> Result<Vec<u8>, JsError> {
     }
 }
 
+/// 透明背景光栅渲染
+///
+/// qr-code-styling 的内置 PNG/WebP 渲染不支持透明背景，
+/// 因此先渲染为 SVG，再通过 resvg 光栅化为带 alpha 通道的像素数据。
 fn render_svg_transparent(svg: &str, format: &str) -> Result<Vec<u8>, JsError> {
     use image::codecs::png::PngEncoder;
     use image::codecs::webp::WebPEncoder;
@@ -257,6 +272,7 @@ fn render_svg_transparent(svg: &str, format: &str) -> Result<Vec<u8>, JsError> {
     Ok(buf)
 }
 
+/// 生成 QR 码 SVG 字符串
 #[wasm_bindgen(js_name = "generateSvg")]
 pub fn generate_svg(options: JsValue) -> Result<String, JsError> {
     let opts: QRCodeOpts =
@@ -264,4 +280,12 @@ pub fn generate_svg(options: JsValue) -> Result<String, JsError> {
 
     let qr = build_qr(opts).map_err(|e| JsError::new(&e))?;
     qr.render_svg().map_err(|e| JsError::new(&format!("{e}")))
+}
+
+/// 扫描图片中的 QR 码
+///
+/// 支持 PNG、JPEG、WebP 格式，返回解码后的文本内容
+#[wasm_bindgen]
+pub fn scan(image_data: &[u8]) -> Option<String> {
+    scan_qr(image_data)
 }
