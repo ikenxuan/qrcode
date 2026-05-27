@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/ikenxuan/qrcode/compare/v1.2.0...v1.2.1) (2026-05-27)
+
+
+### 🐛 错误修复
+
+* pkg description ([dd1533e](https://github.com/ikenxuan/qrcode/commit/dd1533e7c426f2974713db72f0c9fbc91c776fac))
+
 ## [1.2.0](https://github.com/ikenxuan/qrcode/compare/v1.1.0...v1.2.0) (2026-05-27)
 
 
