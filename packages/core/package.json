@@ -2,7 +2,7 @@
   "name": "@ikenxuan/qrcode",
   "version": "1.2.0",
   "type": "module",
-  "description": "基于 Rust qr-code-styling 的高性能 QR 码生成器",
+  "description": "基于 Rust qr-code-styling + rxing 的高性能 QR 码生成与扫描工具",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -50,5 +50,5 @@
     "vite-plugin-wasm": "^3.6.0",
     "vitest": "^4.1.7"
   },
-  "timestamp": "2026-05-27 12:54:21"
+  "timestamp": "2026-05-27 12:55:12"
 }
