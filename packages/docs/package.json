@@ -11,7 +11,7 @@
     "lint": "oxlint"
   },
   "dependencies": {
-    "@ikenxuan/qrcode": "workspace:*",
+    "@ikenxuan/qrcode": "1.2.0",
     "@heroui/react": "^3.2.1",
     "@heroui/styles": "^3.2.1",
     "cnfast": "^0.0.8",
