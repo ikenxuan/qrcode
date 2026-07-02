@@ -42,8 +42,8 @@ importers:
         specifier: ^3.2.1
         version: 3.2.1(tailwind-merge@3.4.0)(tailwindcss@4.3.2)
       '@ikenxuan/qrcode':
-        specifier: workspace:*
-        version: link:../core
+        specifier: 1.2.0
+        version: 1.2.0
       cnfast:
         specifier: ^0.0.8
         version: 0.0.8
@@ -393,6 +393,9 @@ packages:
     resolution: {integrity: sha512-6mrVlG338D9sDyOVGmFWqrLruc3lhmCClz3JVmMFKMkngHDR9CzvEsAcobx4injsAajCcHtrj9GwFOIoE0/oaQ==}
     peerDependencies:
       tailwindcss: '>=4.0.0'
+
+  '@ikenxuan/qrcode@1.2.0':
+    resolution: {integrity: sha512-VSQV+SvzqnG/EEgv/bCbokZR1ZUMBlV0UTbgF1veD1yZ9wHh8+Uzb/MZDinZnv6leNeXhEtkUx/shxEjN7jGxQ==}
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -3287,6 +3290,8 @@ snapshots:
       tw-animate-css: 1.4.0
     transitivePeerDependencies:
       - tailwind-merge
+
+  '@ikenxuan/qrcode@1.2.0': {}
 
   '@img/colour@1.1.0':
     optional: true
