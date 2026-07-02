@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="zh-CN" className={inter.className} suppressHydrationWarning>
-      <body className="flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground">
+      <body className="flex min-h-screen flex-col overflow-x-clip bg-background text-foreground">
         <RootProvider>
           {children}
           <ToastProvider />
