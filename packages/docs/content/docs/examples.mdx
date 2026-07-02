@@ -1,0 +1,87 @@
+---
+title: 调用示例
+description: 常见业务场景中的 @ikenxuan/qrcode 调用方式。
+---
+
+# 调用示例
+
+## Rust 主题二维码
+
+```ts twoslash title="rust-theme.ts" lineNumbers
+import { generate } from '@ikenxuan/qrcode';
+
+const image = generate({
+  data: 'https://github.com/ikenxuan/qrcode',
+  size: 360,
+  margin: 16,
+  dotsOptions: {
+    dotType: 'rounded',
+    gradient: {
+      colorFrom: '#b7410e',
+      colorTo: '#dea584',
+    },
+  },
+  cornersSquareOptions: {
+    cornerType: 'extra-rounded',
+    color: '#5f2614',
+  },
+  cornersDotOptions: {
+    cornerType: 'dot',
+    color: '#5f2614',
+  },
+  backgroundOptions: {
+    color: '#fff7ed',
+    round: 0.08,
+  },
+}, 'png');
+```
+
+## 在 React 中预览
+
+```tsx twoslash title="QRCodePreview.tsx"
+import React, { useEffect, useState } from 'react';
+import { generate } from '@ikenxuan/qrcode';
+
+export function QRCodePreview() {
+  const [src, setSrc] = useState('');
+
+  useEffect(() => {
+    const bytes = generate({ data: location.href }, 'png');
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+
+    setSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, []);
+
+  return <img alt="当前页面二维码" src={src} />;
+}
+```
+
+## 批量生成不同点阵
+
+```ts twoslash title="dot-types.ts"
+import { DotType, generate } from '@ikenxuan/qrcode';
+
+for (const dotType of Object.values(DotType)) {
+  const image = generate({
+    data: `dot type: ${dotType}`,
+    dotsOptions: { dotType },
+  }, 'webp');
+
+  console.log(dotType, image.length);
+}
+```
+
+## 生成后立即验证
+
+```ts twoslash title="verify.ts"
+import { generate, scan } from '@ikenxuan/qrcode';
+
+const expected = 'https://example.com/pay?id=2026';
+const image = generate({ data: expected }, 'png');
+const actual = scan(image);
+
+if (actual !== expected) {
+  throw new Error('QR code verification failed');
+}
+```

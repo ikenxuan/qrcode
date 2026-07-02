@@ -1,0 +1,131 @@
+---
+title: 生成二维码
+description: 使用 generate 和 generateSvg 输出 PNG、JPEG、WebP 或 SVG。
+---
+
+# 生成二维码
+
+生成 API 由 `generate()` 与 `generateSvg()` 提供。前者适合统一处理多种格式，后者适合直接拿到 SVG 字符串。
+样式化和栅格渲染最终会进入
+[`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) 中的 Rust WASM 实现，
+底层生成能力来自 [`qr-code-styling`](https://crates.io/crates/qr-code-styling)。
+
+## 基础生成
+
+```ts twoslash title="generate.ts" lineNumbers
+import { generate } from '@ikenxuan/qrcode';
+
+const image = generate({
+  data: 'https://github.com/ikenxuan/qrcode',
+  size: 320,
+  margin: 12,
+}, 'png');
+
+image;
+// ^?
+```
+
+默认返回 `Uint8Array`。如果第三个参数传入 `'base64'`，返回值会被推导为 `string`。
+
+```ts twoslash title="base64.ts"
+import { generate } from '@ikenxuan/qrcode';
+
+const base64 = generate({ data: 'https://example.com' }, 'png', 'base64');
+//    ^?
+
+const src = `data:image/png;base64,${base64}`;
+```
+
+## SVG
+
+```ts twoslash title="svg.ts"
+import { generateSvg } from '@ikenxuan/qrcode';
+
+const svg = generateSvg({
+  data: 'https://example.com',
+  dotsOptions: {
+    dotType: 'classy-rounded',
+    color: '#b7410e',
+  },
+});
+
+svg;
+// ^?
+```
+
+也可以使用 `generate(options, 'svg')` 获取 SVG 的二进制数据。
+
+## 样式化
+
+```ts twoslash title="styled.ts" lineNumbers
+import { generate } from '@ikenxuan/qrcode';
+
+const image = generate({
+  data: 'https://github.com/ikenxuan/qrcode',
+  size: 420,
+  margin: 18,
+  shape: 'circle',
+  dotsOptions: {
+    dotType: 'dots',
+    gradient: {
+      colorFrom: '#b7410e',
+      colorTo: '#dea584',
+    },
+  },
+  cornersSquareOptions: {
+    cornerType: 'extra-rounded',
+    color: '#5f2614',
+  },
+  cornersDotOptions: {
+    cornerType: 'dot',
+    color: '#5f2614',
+  },
+  backgroundOptions: {
+    transparent: true,
+  },
+}, 'png');
+
+image.byteLength;
+//    ^?
+```
+
+## Logo 嵌入
+
+`image` 接收 Logo 图片二进制，`imageOptions` 控制 Logo 比例、留白以及是否隐藏 Logo 区域下方点阵。
+
+```ts twoslash title="logo.ts"
+// @types: node
+import { readFileSync, writeFileSync } from 'node:fs';
+import { generate } from '@ikenxuan/qrcode';
+
+const logo = readFileSync('logo.png');
+
+const qrcode = generate({
+  data: 'https://example.com',
+  size: 420,
+  image: logo,
+  imageOptions: {
+    imageSize: 0.18,
+    margin: 8,
+    hideBackgroundDots: true,
+  },
+}, 'png');
+
+writeFileSync('qrcode.png', qrcode);
+```
+
+## 浏览器下载
+
+```ts twoslash title="download.ts"
+import { generate } from '@ikenxuan/qrcode';
+
+const bytes = generate({ data: location.href }, 'webp');
+const url = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }));
+
+const link = document.createElement('a');
+link.href = url;
+link.download = 'qrcode.webp';
+link.click();
+
+URL.revokeObjectURL(url);
+```

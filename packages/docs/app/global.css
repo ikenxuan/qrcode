@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+@import "@heroui/styles";
+@import 'fumadocs-twoslash/twoslash.css';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+@theme inline {
+  --color-rust: var(--rust);
+  --color-rust-foreground: var(--rust-foreground);
+  --color-rust-soft: var(--rust-soft);
+  --color-oxide: var(--oxide);
+  --color-copper: var(--copper);
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html>body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+:root {
+  --rust: oklch(0.55 0.17 45);
+  --rust-foreground: oklch(0.99 0.01 80);
+  --rust-soft: oklch(0.94 0.05 62);
+  --oxide: oklch(0.24 0.045 48);
+  --copper: oklch(0.74 0.11 55);
+  --background: oklch(0.985 0.012 74);
+  --foreground: oklch(0.20 0.035 48);
+  --surface: oklch(1 0 0);
+  --surface-foreground: var(--foreground);
+  --surface-secondary: oklch(0.965 0.018 73);
+  --surface-secondary-foreground: var(--foreground);
+  --surface-tertiary: oklch(0.935 0.03 67);
+  --surface-tertiary-foreground: var(--foreground);
+  --overlay: var(--surface);
+  --overlay-foreground: var(--foreground);
+  --accent: var(--rust);
+  --accent-foreground: var(--rust-foreground);
+  --accent-soft: color-mix(in oklch, var(--rust) 14%, transparent);
+  --accent-soft-foreground: var(--oxide);
+  --accent-hover: oklch(0.49 0.16 43);
+  --border: oklch(0.77 0.04 61 / 42%);
+  --separator: oklch(0.86 0.025 68);
+  --muted: oklch(0.46 0.035 52);
+  --focus: var(--rust);
+  --link: var(--rust);
+  --field-background: oklch(1 0 0);
+  --field-hover: oklch(0.98 0.012 74);
+  --field-border: oklch(0.77 0.04 61 / 44%);
+  --field-border-hover: oklch(0.66 0.07 53 / 64%);
+  --field-border-focus: var(--rust);
+  --radius: 0.5rem;
+  --fd-primary: var(--rust);
+  --fd-primary-foreground: var(--rust-foreground);
+}
+
+.dark {
+  --rust: oklch(0.72 0.12 55);
+  --rust-foreground: oklch(0.16 0.03 48);
+  --rust-soft: oklch(0.30 0.045 48);
+  --oxide: oklch(0.90 0.035 63);
+  --copper: oklch(0.77 0.11 56);
+  --background: oklch(0.16 0.024 48);
+  --foreground: oklch(0.94 0.025 67);
+  --surface: oklch(0.20 0.03 48);
+  --surface-foreground: var(--foreground);
+  --surface-secondary: oklch(0.24 0.035 48);
+  --surface-secondary-foreground: var(--foreground);
+  --surface-tertiary: oklch(0.29 0.04 48);
+  --surface-tertiary-foreground: var(--foreground);
+  --overlay: oklch(0.22 0.03 48);
+  --overlay-foreground: var(--foreground);
+  --accent: var(--rust);
+  --accent-foreground: var(--rust-foreground);
+  --accent-soft: color-mix(in oklch, var(--rust) 18%, transparent);
+  --accent-soft-foreground: oklch(0.90 0.055 63);
+  --accent-hover: oklch(0.78 0.12 55);
+  --border: oklch(0.42 0.05 48 / 58%);
+  --separator: oklch(0.34 0.038 48);
+  --muted: oklch(0.73 0.03 63);
+  --focus: var(--rust);
+  --link: var(--rust);
+  --field-background: oklch(0.23 0.03 48);
+  --field-hover: oklch(0.27 0.035 48);
+  --field-border: oklch(0.42 0.05 48 / 50%);
+  --field-border-hover: oklch(0.55 0.07 50 / 70%);
+  --field-border-focus: var(--rust);
+  --fd-primary: var(--rust);
+  --fd-primary-foreground: var(--rust-foreground);
+}
+
+* {
+  letter-spacing: 0;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--rust) 28%, transparent);
+}
+
+.twoslash-popup-container {
+  z-index: 50;
+}

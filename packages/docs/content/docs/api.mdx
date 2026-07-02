@@ -1,0 +1,120 @@
+---
+title: API 参考
+description: 函数、类型、配置项与枚举值完整说明。
+---
+
+# API 参考
+
+## 导出内容
+
+```ts twoslash title="imports.ts"
+import {
+  generate,
+  generateSvg,
+  scan,
+  DotType,
+  CornerSquareType,
+  CornerDotType,
+  ShapeType,
+  OutputFormat,
+} from '@ikenxuan/qrcode';
+
+import type {
+  QRCodeOptions,
+  Encoding,
+  GenerateResult,
+  Gradient,
+  DotsOptions,
+  CornersSquareOptions,
+  CornersDotOptions,
+  ImageOptions,
+  BackgroundOptions,
+} from '@ikenxuan/qrcode';
+```
+
+## generate
+
+```ts twoslash title="generate-signature.ts"
+import type { Encoding, GenerateResult, OutputFormat, QRCodeOptions } from '@ikenxuan/qrcode';
+
+declare function generate<E extends Encoding = 'binary'>(
+  options: QRCodeOptions,
+  format: OutputFormat,
+  encoding?: E,
+): GenerateResult<E>;
+```
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `options` | `QRCodeOptions` | 二维码内容、尺寸、样式、背景、Logo 等配置。 |
+| `format` | `OutputFormat` | `'svg'`、`'png'`、`'jpeg'`、`'webp'`。 |
+| `encoding` | `'binary' \| 'base64'` | 输出编码，默认 `'binary'`。 |
+
+## generateSvg
+
+```ts twoslash title="generate-svg-signature.ts"
+import type { QRCodeOptions } from '@ikenxuan/qrcode';
+
+declare function generateSvg(options: QRCodeOptions): string;
+```
+
+## scan
+
+```ts twoslash title="scan-signature.ts"
+declare function scan(imageData: Uint8Array): string | null;
+```
+
+## QRCodeOptions
+
+```ts twoslash title="options.ts"
+import type { QRCodeOptions } from '@ikenxuan/qrcode';
+
+const options: QRCodeOptions = {
+  data: 'https://example.com',
+  size: 300,
+  margin: 12,
+  shape: 'square',
+};
+
+options;
+// ^?
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `data` | 要编码的 URL、文本或业务字符串。 |
+| `size` | 二维码尺寸，单位像素，默认 `300`。 |
+| `margin` | 二维码外边距，单位像素。 |
+| `shape` | 整体形状，方形或圆形。 |
+| `dotsOptions` | 点阵样式、颜色或渐变。 |
+| `cornersSquareOptions` | 定位角外层方块样式。 |
+| `cornersDotOptions` | 定位角内部点样式。 |
+| `backgroundOptions` | 背景色、透明背景、背景渐变和圆角。 |
+| `image` | Logo 图片二进制数据。 |
+| `imageOptions` | Logo 尺寸、留白和背景点阵处理。 |
+
+## 可选值
+
+| 常量 | 字符串值 |
+| --- | --- |
+| `OutputFormat.Svg` | `'svg'` |
+| `OutputFormat.Png` | `'png'` |
+| `OutputFormat.Jpeg` | `'jpeg'` |
+| `OutputFormat.WebP` | `'webp'` |
+| `DotType.Square` | `'square'` |
+| `DotType.Dots` | `'dots'` |
+| `DotType.Rounded` | `'rounded'` |
+| `DotType.Classy` | `'classy'` |
+| `DotType.ClassyRounded` | `'classy-rounded'` |
+| `DotType.ExtraRounded` | `'extra-rounded'` |
+| `CornerSquareType.Square` | `'square'` |
+| `CornerSquareType.Dot` | `'dot'` |
+| `CornerSquareType.ExtraRounded` | `'extra-rounded'` |
+| `CornerDotType.Square` | `'square'` |
+| `CornerDotType.Dot` | `'dot'` |
+| `ShapeType.Square` | `'square'` |
+| `ShapeType.Circle` | `'circle'` |
+
+## 颜色格式
+
+颜色字段接受常见 CSS 颜色字符串，包括 Hex、RGB/RGBA、HSL/HSLA、CSS Color 4 空格语法、OKLab、OKLCH 和常见命名颜色。

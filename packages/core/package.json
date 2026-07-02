@@ -44,11 +44,11 @@
   "license": "MIT",
   "devDependencies": {
     "@ikenxuan/qrcode-wasm": "workspace:*",
-    "rolldown-plugin-wasm": "^0.2.1",
-    "tsdown": "0.22.0",
+    "rolldown-plugin-wasm": "^0.3.2",
+    "tsdown": "0.22.3",
     "typescript": "^6.0.3",
     "vite-plugin-wasm": "^3.6.0",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.9"
   },
-  "timestamp": "2026-05-27 12:55:12"
+  "timestamp": "2026-07-02 21:34:38"
 }

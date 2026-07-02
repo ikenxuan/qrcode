@@ -1,0 +1,116 @@
+---
+title: 快速开始
+description: 安装 @ikenxuan/qrcode，并在浏览器或 Node.js 中生成与扫描二维码。
+---
+
+# 快速开始
+
+`@ikenxuan/qrcode` 是 TypeScript 封装层，底层由仓库中的
+[`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) Rust crate 编译而来。
+Rust 侧生成逻辑基于 [`qr-code-styling`](https://crates.io/crates/qr-code-styling)，
+扫码逻辑基于 [`rxing`](https://crates.io/crates/rxing)。核心包将
+[`@ikenxuan/qrcode-wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) 的 WASM 产物内联到
+TypeScript 封装层中，因此应用侧无需手动加载 `.wasm` 文件，也不需要初始化函数。
+
+<Cards>
+  <Card title="生成二维码" href="/docs/generate">
+    了解样式、输出格式、透明背景与 Logo 嵌入。
+  </Card>
+  <Card title="扫描二维码" href="/docs/scan">
+    读取 PNG、JPEG、WebP 图片二进制并返回二维码内容。
+  </Card>
+  <Card title="API 参考" href="/docs/api">
+    查看所有函数、类型、选项与可选值。
+  </Card>
+</Cards>
+
+## 安装
+
+<Tabs groupId="package-manager" items={['pnpm', 'npm', 'yarn', 'bun']} persist>
+  <Tab value="pnpm">
+
+```bash
+pnpm add @ikenxuan/qrcode
+```
+
+  </Tab>
+  <Tab value="npm">
+
+```bash
+npm install @ikenxuan/qrcode
+```
+
+  </Tab>
+  <Tab value="yarn">
+
+```bash
+yarn add @ikenxuan/qrcode
+```
+
+  </Tab>
+  <Tab value="bun">
+
+```bash
+bun add @ikenxuan/qrcode
+```
+
+  </Tab>
+</Tabs>
+
+## 最小调用
+
+```ts twoslash title="quick-start.ts"
+import { generate, generateSvg, scan } from '@ikenxuan/qrcode';
+
+const png = generate({ data: 'https://example.com' }, 'png');
+//    ^?
+
+const svg = generateSvg({ data: 'https://example.com' });
+//    ^?
+
+const text = scan(png);
+//    ^?
+```
+
+## 工作方式
+
+<Steps>
+<Step>
+
+### 准备配置
+
+使用 `QRCodeOptions` 描述二维码内容、尺寸、点阵、定位角、背景和 Logo。
+
+</Step>
+<Step>
+
+### 生成图片
+
+通过 `generate()` 输出二进制，或使用 `generateSvg()` 直接获得 SVG 字符串。
+
+</Step>
+<Step>
+
+### 读取结果
+
+把生成结果写入文件、转成 Blob 下载，或把图片二进制传给 `scan()` 做识别。
+
+</Step>
+</Steps>
+
+## Rust / WASM 来源
+
+| 链接 | 说明 |
+| --- | --- |
+| [`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) | Rust crate 与 wasm-pack 构建入口。 |
+| [`Cargo.toml`](https://github.com/ikenxuan/qrcode/blob/main/packages/wasm/Cargo.toml) | Rust 依赖、crate-type 与 release profile 配置。 |
+| [`qr-code-styling`](https://crates.io/crates/qr-code-styling) | 底层二维码生成和样式化能力。 |
+| [`rxing`](https://crates.io/crates/rxing) | 底层二维码识别能力。 |
+
+## 环境支持
+
+| 环境 | 说明 |
+| --- | --- |
+| 浏览器 | 可生成预览、下载二维码、扫描用户上传图片。 |
+| Node.js | 可批量生成文件、读取本地图片并扫码。 |
+| ESM | 包为 ESM，适合现代 Next.js、Vite、Node.js ESM 项目。 |

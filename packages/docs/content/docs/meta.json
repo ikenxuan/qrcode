@@ -1,0 +1,4 @@
+{
+  "title": "@ikenxuan/qrcode",
+  "pages": ["index", "generate", "scan", "examples", "api"]
+}

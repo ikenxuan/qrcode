@@ -1,0 +1,61 @@
+---
+title: 扫描二维码
+description: 使用 scan 从 PNG、JPEG、WebP 图片中读取二维码文本。
+---
+
+# 扫描二维码
+
+`scan(imageData)` 接收图片二进制数据，支持 PNG、JPEG、WebP。识别成功返回二维码内容，未识别到返回 `null`。
+扫码实现位于
+[`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm)，底层二维码解码依赖
+[`rxing`](https://crates.io/crates/rxing)。
+
+## 扫描生成结果
+
+```ts twoslash title="scan-generated.ts"
+import { generate, scan } from '@ikenxuan/qrcode';
+
+const image = generate({ data: 'hello qrcode' }, 'png');
+const text = scan(image);
+//    ^?
+```
+
+## Node.js 扫描本地图片
+
+```ts twoslash title="scan-file.ts"
+// @types: node
+import { readFileSync } from 'node:fs';
+import { scan } from '@ikenxuan/qrcode';
+
+const image = readFileSync('qrcode.png');
+const text = scan(image);
+
+if (text) {
+  console.log('decoded:', text);
+}
+```
+
+## 浏览器上传扫码
+
+```ts twoslash title="scan-upload.ts"
+import { scan } from '@ikenxuan/qrcode';
+
+export async function scanFile(file: File): Promise<string | null> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return scan(bytes);
+}
+```
+
+## 识别建议
+
+<Accordions type="single">
+  <Accordion title="透明背景能识别吗？">
+    可以。透明背景 PNG / WebP 会自动合成白底再参与识别。
+  </Accordion>
+  <Accordion title="大图里的小二维码能识别吗？">
+    扫码逻辑包含多区域分块扫描，但更清晰、更高对比度的原图仍然更稳。
+  </Accordion>
+  <Accordion title="识别失败会抛异常吗？">
+    一般不会。没有二维码、图片损坏或无效数据会返回 `null`。
+  </Accordion>
+</Accordions>
