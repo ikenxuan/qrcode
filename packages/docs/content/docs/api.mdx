@@ -93,6 +93,41 @@ options;
 | `image` | Logo 图片二进制数据。 |
 | `imageOptions` | Logo 尺寸、留白和背景点阵处理。 |
 
+## ImageOptions
+
+控制中心 Logo 的嵌入方式，需要与 `image`（Logo 二进制数据）配合使用。
+
+```ts twoslash title="image-options.ts"
+import type { QRCodeOptions } from '@ikenxuan/qrcode';
+
+declare const logo: Uint8Array;
+
+const options: QRCodeOptions = {
+  data: 'https://example.com',
+  image: logo,
+  imageOptions: {
+    imageSize: 0.22,
+    margin: 8,
+    hideBackgroundDots: true,
+  },
+};
+
+options.imageOptions;
+// ^?
+```
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `imageSize` | `number` | Logo 占二维码的比例，范围 `0.0 ~ 1.0`。建议 `≤ 0.25`，过大可能导致无法扫描。 |
+| `margin` | `number` | Logo 周围的留白像素。 |
+| `hideBackgroundDots` | `boolean` | 是否挖空 Logo 区域下方的点阵，避免图案叠加干扰。 |
+
+<Callout type="info">
+  `image` 接收的是图片**二进制数据**（`Uint8Array`），而非 URL 或路径。Node 端可用
+  `readFileSync('logo.png')` 读取，浏览器端可用 `new Uint8Array(await blob.arrayBuffer())`。
+  由于二维码具备纠错能力，中心 Logo 不会破坏可扫描性，但仍建议生成后用 `scan` 自检。
+</Callout>
+
 ## 可选值
 
 | 常量 | 字符串值 |

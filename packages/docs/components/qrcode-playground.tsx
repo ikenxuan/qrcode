@@ -29,6 +29,7 @@ import {
   FiCopy,
   FiDownload,
   FiGithub,
+  FiTrash2,
   FiUpload,
   FiZap,
 } from 'react-icons/fi';
@@ -117,6 +118,7 @@ function highlightTypeScript(code: string) {
 
 export function QRCodePlayground() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [qr, setQr] = useState<QRCodeModule | null>(null);
   const [content, setContent] = useState('https://github.com/ikenxuan/qrcode');
   const [format, setFormat] = useState<OutputFormat>('png');
@@ -136,6 +138,13 @@ export function QRCodePlayground() {
   const [scanResult, setScanResult] = useState('尚未扫描');
   const [uploadResult, setUploadResult] = useState('等待上传图片');
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [logoBytes, setLogoBytes] = useState<Uint8Array | null>(null);
+  const [logoName, setLogoName] = useState('');
+  const [logoPreview, setLogoPreview] = useState('');
+  const [imageSize, setImageSize] = useState(0.2);
+  const [logoMargin, setLogoMargin] = useState(6);
+  const [hideBackgroundDots, setHideBackgroundDots] = useState(true);
+  const hasLogo = logoBytes !== null;
 
   const mimeType = useMemo(() => {
     if (format === 'svg') return 'image/svg+xml';
@@ -179,6 +188,12 @@ export function QRCodePlayground() {
       backgroundOptions: transparentBackground
         ? { transparent: true }
         : { color: backgroundColor, round: shape === 'circle' ? 0.5 : 0.08 },
+      ...(logoBytes
+        ? {
+            image: logoBytes,
+            imageOptions: { imageSize, margin: logoMargin, hideBackgroundDots },
+          }
+        : {}),
     };
   }, [
     backgroundColor,
@@ -186,6 +201,10 @@ export function QRCodePlayground() {
     dotColor,
     dotType,
     gradientTo,
+    hideBackgroundDots,
+    imageSize,
+    logoBytes,
+    logoMargin,
     margin,
     shape,
     size,
@@ -205,8 +224,20 @@ export function QRCodePlayground() {
       ? `const svg = generateSvg(options);`
       : `const image = generate(options, '${format}');\nconst text = scan(image);`;
 
-    return `import { ${generator}${format === 'svg' ? '' : ', scan'} } from '@ikenxuan/qrcode';
+    const fsImport = hasLogo ? `import { readFileSync } from 'node:fs';\n` : '';
+    const logoConst = hasLogo ? `\nconst logo = readFileSync('logo.png');\n` : '';
+    const imageBlock = hasLogo
+      ? `
+  image: logo,
+  imageOptions: {
+    imageSize: ${imageSize},
+    margin: ${logoMargin},
+    hideBackgroundDots: ${hideBackgroundDots},
+  },`
+      : '';
 
+    return `${fsImport}import { ${generator}${format === 'svg' ? '' : ', scan'} } from '@ikenxuan/qrcode';
+${logoConst}
 const options = {
   data: '${escapeCodeString(options.data)}',
   size: ${size},
@@ -222,7 +253,7 @@ const options = {
   },
   backgroundOptions: {
     ${backgroundLine},
-  },
+  },${imageBlock}
 };
 
 ${output}`;
@@ -232,6 +263,10 @@ ${output}`;
     dotType,
     format,
     gradientTo,
+    hasLogo,
+    hideBackgroundDots,
+    imageSize,
+    logoMargin,
     margin,
     options.data,
     shape,
@@ -318,6 +353,32 @@ ${output}`;
     catch (reason) {
       setUploadResult(reason instanceof Error ? reason.message : '扫描失败');
     }
+  }
+
+  async function pickLogo(file: File | undefined) {
+    if (!file) return;
+
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      setLogoBytes(bytes);
+      setLogoName(file.name);
+      setLogoPreview((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return URL.createObjectURL(file);
+      });
+    }
+    catch (reason) {
+      setError(reason instanceof Error ? reason.message : '读取 Logo 失败');
+    }
+  }
+
+  function removeLogo() {
+    setLogoBytes(null);
+    setLogoName('');
+    setLogoPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return '';
+    });
   }
 
   function downloadPreview() {
@@ -462,6 +523,85 @@ ${output}`;
                 value={backgroundColor}
                 onChange={setBackgroundColor}
               />
+            </div>
+
+            <div className="grid min-w-0 gap-4 rounded-lg border border-border bg-rust-soft/35 p-4">
+              <div className="grid gap-1">
+                <Label>中心 Logo</Label>
+                <Description>
+                  嵌入 PNG / JPEG / WebP 图片。二维码具备纠错能力，Logo 不影响扫码。
+                </Description>
+              </div>
+
+              <input
+                ref={logoInputRef}
+                className="hidden"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(event) => {
+                  void pickLogo(event.currentTarget.files?.[0]);
+                  event.currentTarget.value = '';
+                }}
+              />
+
+              <div className="flex flex-wrap items-center gap-3">
+                {logoPreview ? (
+                  // eslint-disable-next-line next/no-img-element -- Logo 预览为浏览器创建的 blob。
+                  <img
+                    alt="已选 Logo"
+                    className="size-12 shrink-0 rounded-md border border-border object-contain"
+                    src={logoPreview}
+                  />
+                ) : null}
+                <Button variant="secondary" onPress={() => logoInputRef.current?.click()}>
+                  <FiUpload aria-hidden />
+                  {hasLogo ? '更换 Logo' : '选择 Logo'}
+                </Button>
+                {hasLogo ? (
+                  <>
+                    <span className="max-w-[10rem] truncate font-mono text-xs text-muted">
+                      {logoName}
+                    </span>
+                    <Button size="sm" variant="ghost" onPress={removeLogo}>
+                      <FiTrash2 aria-hidden />
+                      移除
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+
+              {hasLogo ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <NumberSetting
+                    describe={(value) => `占比 ${Math.round(value * 100)}%`}
+                    label="Logo 占比"
+                    maxValue={0.4}
+                    minValue={0.05}
+                    step={0.01}
+                    value={imageSize}
+                    onChange={setImageSize}
+                  />
+                  <NumberSetting
+                    label="Logo 留白"
+                    maxValue={20}
+                    minValue={0}
+                    step={1}
+                    value={logoMargin}
+                    onChange={setLogoMargin}
+                  />
+                  <Checkbox
+                    isSelected={hideBackgroundDots}
+                    onChange={setHideBackgroundDots}
+                  >
+                    <Checkbox.Content>
+                      <Checkbox.Control>
+                        <Checkbox.Indicator />
+                      </Checkbox.Control>
+                      挖空 Logo 下方点阵
+                    </Checkbox.Content>
+                  </Checkbox>
+                </div>
+              ) : null}
             </div>
           </Form>
         </Card.Content>
@@ -631,6 +771,7 @@ function NumberSetting({
   maxValue,
   step,
   onChange,
+  describe,
 }: {
   label: string;
   value: number;
@@ -638,6 +779,7 @@ function NumberSetting({
   maxValue: number;
   step: number;
   onChange: (value: number) => void;
+  describe?: (value: number) => string;
 }) {
   return (
     <NumberField
@@ -657,7 +799,7 @@ function NumberSetting({
         <NumberField.Input className="w-full" />
         <NumberField.IncrementButton />
       </NumberField.Group>
-      <Description>{value}px</Description>
+      <Description>{describe ? describe(value) : `${value}px`}</Description>
     </NumberField>
   );
 }

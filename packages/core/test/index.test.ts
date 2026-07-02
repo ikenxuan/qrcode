@@ -2,6 +2,44 @@ import { describe, it, expect } from 'vitest'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { deflateSync, crc32 } from 'node:zlib'
+
+/**
+ * 手写一张纯色 RGB PNG 作为 Logo 素材。
+ *
+ * 刻意不用库自身生成二维码当 Logo —— 那会在图片中心嵌入一个真实可解码的
+ * 二维码，导致扫描时锁定内层 Logo 而非外层内容。纯色图片无定位图案，
+ * 既零依赖又能让 Logo 扫描测试稳定。
+ */
+function makeSolidPng (w: number, h: number, [r, g, b]: [number, number, number]): Uint8Array {
+  const chunk = (type: string, data: Buffer): Buffer => {
+    const typeBuf = Buffer.from(type, 'ascii')
+    const lenBuf = Buffer.alloc(4)
+    lenBuf.writeUInt32BE(data.length)
+    const crcBuf = Buffer.alloc(4)
+    crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0)
+    return Buffer.concat([lenBuf, typeBuf, data, crcBuf])
+  }
+  const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(w, 0)
+  ihdr.writeUInt32BE(h, 4)
+  ihdr[8] = 8 // bit depth
+  ihdr[9] = 2 // color type: RGB
+  const stride = w * 3
+  const raw = Buffer.alloc((stride + 1) * h)
+  for (let y = 0; y < h; y++) {
+    raw[y * (stride + 1)] = 0 // filter: none
+    for (let x = 0; x < w; x++) {
+      const o = y * (stride + 1) + 1 + x * 3
+      raw[o] = r
+      raw[o + 1] = g
+      raw[o + 2] = b
+    }
+  }
+  const idat = deflateSync(raw)
+  return new Uint8Array(Buffer.concat([sig, chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', Buffer.alloc(0))]))
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const outDir = resolve(__dirname, 'output')
@@ -263,6 +301,84 @@ describe('generate - 颜色格式支持', () => {
     expect(buf).toBeInstanceOf(Uint8Array)
     expect(String.fromCharCode(...buf.slice(0, 4))).toBe('RIFF')
     writeFileSync(resolve(outDir, '20-混合颜色格式.webp'), buf)
+  })
+})
+
+describe('generate - Logo 嵌入', () => {
+  /** 纯红色方块 Logo（无二维码定位图案，扫描稳定） */
+  const makeLogo = (): Uint8Array => makeSolidPng(120, 120, [255, 0, 0])
+
+  it('generateSvg 会把 Logo 嵌入为 base64 <image> 元素', async () => {
+    const { generateSvg } = await import('../dist/index.js')
+    const logo = makeLogo()
+
+    const svgNoLogo = generateSvg({ data: 'https://example.com', size: 300 })
+    expect(svgNoLogo).not.toMatch(/<image[\s>]/i)
+
+    const svgLogo = generateSvg({
+      data: 'https://example.com',
+      size: 300,
+      image: logo,
+      imageOptions: { imageSize: 0.3, margin: 6, hideBackgroundDots: true },
+    })
+    // 决定性证明：二进制经 WASM 传入 Rust 并被渲染进 SVG
+    expect(svgLogo).toMatch(/<image[\s>]/i)
+    expect(svgLogo).toMatch(/data:image\/[a-z]+;base64,/i)
+    expect(svgLogo.length).toBeGreaterThan(svgNoLogo.length)
+    writeFileSync(resolve(outDir, '21-Logo嵌入.svg'), svgLogo)
+  })
+
+  it('嵌入 Logo 的 PNG 仍可被扫描解码', async () => {
+    const { generate, scan } = await import('../dist/index.js')
+    const logo = makeLogo()
+    const png = generate({
+      data: 'https://github.com/ikenxuan/qrcode',
+      size: 400,
+      image: logo,
+      imageOptions: { imageSize: 0.22, margin: 6, hideBackgroundDots: true },
+    }, 'png')
+    expect(png[0]).toBe(0x89)
+    expect(scan(png)).toBe('https://github.com/ikenxuan/qrcode')
+    writeFileSync(resolve(outDir, '22-Logo可扫描.png'), png)
+  })
+
+  it('hideBackgroundDots 开关均可正常生成', async () => {
+    const { generate } = await import('../dist/index.js')
+    const logo = makeLogo()
+    for (const hide of [true, false]) {
+      const buf = generate({
+        data: 'https://example.com',
+        size: 360,
+        image: logo,
+        imageOptions: { imageSize: 0.25, margin: 4, hideBackgroundDots: hide },
+      }, 'png')
+      expect(buf).toBeInstanceOf(Uint8Array)
+      expect(buf[0]).toBe(0x89)
+    }
+  })
+
+  it('仅传 image、不传 imageOptions 时使用默认参数', async () => {
+    const { generate } = await import('../dist/index.js')
+    const logo = makeLogo()
+    const buf = generate({ data: 'https://example.com', size: 360, image: logo }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+    expect(buf[0]).toBe(0x89)
+  })
+
+  it('Logo + 渐变点阵 + 透明背景组合', async () => {
+    const { generate } = await import('../dist/index.js')
+    const logo = makeLogo()
+    const buf = generate({
+      data: 'https://github.com/ikenxuan/qrcode',
+      size: 420,
+      shape: 'circle',
+      dotsOptions: { dotType: 'dots', gradient: { colorFrom: '#667eea', colorTo: '#764ba2' } },
+      image: logo,
+      imageOptions: { imageSize: 0.2, margin: 8, hideBackgroundDots: true },
+      backgroundOptions: { transparent: true },
+    }, 'png')
+    expect(buf).toBeInstanceOf(Uint8Array)
+    writeFileSync(resolve(outDir, '23-Logo渐变透明组合.png'), buf)
   })
 })
 

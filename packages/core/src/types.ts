@@ -119,11 +119,19 @@ export interface CornersDotOptions {
 
 /** Logo 图片嵌入配置 */
 export interface ImageOptions {
-  /** Logo 占 QR 码的比例，范围 0.0 ~ 1.0 */
+  /**
+   * Logo 占 QR 码的比例，范围 `0.0` ~ `1.0`，默认 `0.4`。
+   *
+   * 建议 `≤ 0.25`，过大会覆盖过多点阵导致无法扫描。
+   */
   imageSize?: number
-  /** Logo 周围的留白像素 */
+  /** Logo 周围的留白像素，默认 `0` */
   margin?: number
-  /** 是否隐藏 Logo 区域下方的点阵 */
+  /**
+   * 是否挖空 Logo 区域下方的点阵，默认 `true`。
+   *
+   * 开启后 Logo 不会与点阵图案叠加，视觉更干净。
+   */
   hideBackgroundDots?: boolean
 }
 
@@ -157,8 +165,13 @@ export interface QRCodeOptions {
   cornersDotOptions?: CornersDotOptions
   /** 背景配置（默认白色，可设置透明） */
   backgroundOptions?: BackgroundOptions
-  /** 嵌入的 Logo 图片数据 */
+  /**
+   * 嵌入到二维码中心的 Logo 图片**二进制数据**（非 URL / 路径）。
+   *
+   * 支持 PNG / JPEG / WebP。Node 端可用 `readFileSync('logo.png')` 读取，
+   * 浏览器端可用 `new Uint8Array(await blob.arrayBuffer())`。
+   */
   image?: Uint8Array
-  /** Logo 图片嵌入配置 */
+  /** Logo 图片嵌入配置，需与 {@link image} 配合使用 */
   imageOptions?: ImageOptions
 }

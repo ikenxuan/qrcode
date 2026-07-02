@@ -36,6 +36,36 @@ const image = generate({
 }, 'png');
 ```
 
+## 品牌 Logo 二维码
+
+在二维码中心嵌入品牌 Logo。得益于二维码的纠错能力，即便 Logo 覆盖了中心区域，
+内容依旧可以被正常扫描解码 —— 生成后用 `scan` 自检一次最稳妥。
+
+```ts twoslash title="brand-logo.ts"
+// @types: node
+import { readFileSync } from 'node:fs';
+import { generate, scan } from '@ikenxuan/qrcode';
+
+const logo = readFileSync('brand.png');
+const data = 'https://github.com/ikenxuan/qrcode';
+
+const image = generate({
+  data,
+  size: 420,
+  image: logo,
+  imageOptions: {
+    imageSize: 0.22,        // Logo 占二维码的比例，建议 ≤ 0.25
+    margin: 8,              // Logo 四周留白
+    hideBackgroundDots: true, // 挖空 Logo 下方点阵，避免叠加干扰
+  },
+}, 'png');
+
+// 自检：确认嵌入 Logo 后依旧可解码
+if (scan(image) !== data) {
+  throw new Error('嵌入 Logo 后二维码无法解码，请调小 imageSize');
+}
+```
+
 ## 在 React 中预览
 
 ```tsx twoslash title="QRCodePreview.tsx"
