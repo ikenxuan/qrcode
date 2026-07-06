@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.3.0](https://github.com/ikenxuan/qrcode/compare/v1.2.0...v1.3.0) (2026-07-06)
+
+
+### ✨ 新功能
+
+* **core:** 将API改为异步并添加浏览器入口支持 ([9fde5cf](https://github.com/ikenxuan/qrcode/commit/9fde5cf7f6c2b1a26fa3135585d313f2d8924a7f))
+* 增加 Logo 嵌入功能及相关配置选项 ([006a3e5](https://github.com/ikenxuan/qrcode/commit/006a3e50e11f9a3f3c289599ab71d4a13d1bf2e3))
+
+
+### 🐛 错误修复
+
+* pkg description ([dd1533e](https://github.com/ikenxuan/qrcode/commit/dd1533e7c426f2974713db72f0c9fbc91c776fac))
+
+
+### 📝 文档更新
+
+* add docs ([2988339](https://github.com/ikenxuan/qrcode/commit/29883393c0111a574842c50e4c0df01c45430e57))
+* **qrcode-playground:** implement QR code generation and scanning playground ([4b42154](https://github.com/ikenxuan/qrcode/commit/4b42154817df092308f43c5d9066a471443f0ba5))
+
 ## [1.2.0](https://github.com/ikenxuan/qrcode/compare/v1.1.0...v1.2.0) (2026-05-27)
 
 
