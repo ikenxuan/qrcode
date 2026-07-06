@@ -1,11 +1,13 @@
 {
   "name": "@ikenxuan/qrcode-wasm",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "main": "dist/qrcode.js",
   "types": "dist/qrcode.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "wasm-pack build --target bundler --release --out-dir dist --out-name qrcode"
   }
