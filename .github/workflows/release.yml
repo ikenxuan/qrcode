@@ -5,9 +5,21 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish packages/core to npm even if release-please did not create a new release'
+        required: false
+        default: false
+        type: boolean
+      create_github_release:
+        description: 'Create the missing GitHub release/tag for the current packages/core version before publishing'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
+  issues: write
   id-token: write
   pull-requests: write
 
@@ -28,13 +40,17 @@ jobs:
 
   publish:
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    if: needs.release-please.outputs.release_created == 'true' || (github.event_name == 'workflow_dispatch' && (inputs.publish || inputs.create_github_release))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      issues: write
+      pull-requests: write
       id-token: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -73,11 +89,47 @@ jobs:
       - name: Run tests
         run: pnpm --filter @ikenxuan/qrcode test
 
+      - name: Create missing GitHub release
+        if: github.event_name == 'workflow_dispatch' && inputs.create_github_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p "require('./packages/core/package.json').version")"
+          tag="v${version}"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists."
+          else
+            if git rev-parse "$tag" >/dev/null 2>&1; then
+              echo "Tag $tag already exists."
+            else
+              git tag "$tag" "$GITHUB_SHA"
+              git push origin "$tag"
+            fi
+
+            notes_file="$(mktemp)"
+            sed -n "/^## \[$version\]/,/^## \[/p" packages/core/CHANGELOG.md | sed '${/^## \[/d;}' > "$notes_file"
+            gh release create "$tag" --title "$tag" --notes-file "$notes_file"
+          fi
+
+          pr_number="$(gh pr list --state merged --label 'autorelease: pending' --json number,title,mergedAt --jq 'sort_by(.mergedAt) | reverse | map(select(.title | startswith("chore") and contains("release"))) | .[0].number // empty')"
+          if [ -n "$pr_number" ]; then
+            gh label create 'autorelease: tagged' --color ededed --description 'Tagged by release-please' || true
+            gh pr edit "$pr_number" --remove-label 'autorelease: pending' --add-label 'autorelease: tagged'
+          fi
+
       - name: Upgrade npm
         run: npm install -g npm@latest
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "@ikenxuan/qrcode@$version" version >/dev/null 2>&1; then
+            echo "@ikenxuan/qrcode@$version is already published."
+            exit 0
+          fi
+
+          npm publish --provenance --access public
         working-directory: packages/core
 
       - name: Sync to Taobao Mirror
