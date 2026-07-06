@@ -89,13 +89,22 @@ jobs:
       - name: Run tests
         run: pnpm --filter @ikenxuan/qrcode test
 
+      - name: Read package version
+        id: package_version
+        run: |
+          version="$(node -p "require('./packages/core/package.json').version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
       - name: Create missing GitHub release
         if: github.event_name == 'workflow_dispatch' && inputs.create_github_release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.package_version.outputs.version }}
+          TAG: ${{ steps.package_version.outputs.tag }}
         run: |
-          version="$(node -p "require('./packages/core/package.json').version")"
-          tag="v${version}"
+          version="$VERSION"
+          tag="$TAG"
 
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release $tag already exists."
@@ -118,12 +127,25 @@ jobs:
             gh pr edit "$pr_number" --remove-label 'autorelease: pending' --add-label 'autorelease: tagged'
           fi
 
+      - name: Verify GitHub release exists
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.package_version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists."
+          else
+            echo "::error::Release $TAG does not exist. Re-run this workflow with create_github_release enabled before publishing."
+            exit 1
+          fi
+
       - name: Upgrade npm
         run: npm install -g npm@latest
 
       - name: Publish to npm
         run: |
-          version="$(node -p "require('./package.json').version")"
+          version="${{ steps.package_version.outputs.version }}"
           if npm view "@ikenxuan/qrcode@$version" version >/dev/null 2>&1; then
             echo "@ikenxuan/qrcode@$version is already published."
             exit 0

@@ -3,6 +3,7 @@
   "include-component-in-tag": false,
   "separate-pull-requests": true,
   "pull-request-title-pattern": "chore${scope}: release${component} ${version}",
+  "group-pull-request-title-pattern": "chore${scope}: release${component} ${version}",
   "commit-search-depth": 50,
   "include-commit-authors": true,
   "packages": {
