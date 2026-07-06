@@ -1,11 +1,11 @@
-export type QRCodeModule = typeof import('@ikenxuan/qrcode');
-export type QRCodeOptions = import('@ikenxuan/qrcode').QRCodeOptions;
-export type OutputFormat = import('@ikenxuan/qrcode').OutputFormat;
-export type Encoding = import('@ikenxuan/qrcode').Encoding;
-export type DotType = import('@ikenxuan/qrcode').DotType;
-export type CornerSquareType = import('@ikenxuan/qrcode').CornerSquareType;
-export type CornerDotType = import('@ikenxuan/qrcode').CornerDotType;
-export type ShapeType = import('@ikenxuan/qrcode').ShapeType;
+export type QRCodeModule = typeof import('@ikenxuan/qrcode/browser');
+export type QRCodeOptions = import('@ikenxuan/qrcode/browser').QRCodeOptions;
+export type OutputFormat = import('@ikenxuan/qrcode/browser').OutputFormat;
+export type Encoding = import('@ikenxuan/qrcode/browser').Encoding;
+export type DotType = import('@ikenxuan/qrcode/browser').DotType;
+export type CornerSquareType = import('@ikenxuan/qrcode/browser').CornerSquareType;
+export type CornerDotType = import('@ikenxuan/qrcode/browser').CornerDotType;
+export type ShapeType = import('@ikenxuan/qrcode/browser').ShapeType;
 
 export type CodeSampleKey = 'node' | 'react' | 'vue3' | 'browser';
 

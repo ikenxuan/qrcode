@@ -5,7 +5,8 @@ description: 使用 scan 从 PNG、JPEG、WebP 图片中读取二维码文本。
 
 # 扫描二维码
 
-`scan(imageData)` 接收图片二进制数据，支持 PNG、JPEG、WebP。识别成功返回二维码内容，未识别到返回 `null`。
+`scan(imageData)` 接收图片二进制数据，支持 PNG、JPEG、WebP。默认入口中它是 Node.js 异步方法；
+识别成功返回二维码内容，未识别到返回 `null`。
 扫码实现位于
 [`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm)，底层二维码解码依赖
 [`rxing`](https://crates.io/crates/rxing)。
@@ -15,9 +16,9 @@ description: 使用 scan 从 PNG、JPEG、WebP 图片中读取二维码文本。
 ```ts twoslash title="scan-generated.ts"
 import { generate, scan } from '@ikenxuan/qrcode';
 
-const image = generate({ data: 'hello qrcode' }, 'png');
-const text = scan(image);
-//    ^?
+const image = await generate({ data: 'hello qrcode' }, 'png');
+const text = await scan(image);
+//     ^?
 ```
 
 ## Node.js 扫描本地图片
@@ -28,7 +29,7 @@ import { readFileSync } from 'node:fs';
 import { scan } from '@ikenxuan/qrcode';
 
 const image = readFileSync('qrcode.png');
-const text = scan(image);
+const text = await scan(image);
 
 if (text) {
   console.log('decoded:', text);
@@ -38,11 +39,11 @@ if (text) {
 ## 浏览器上传扫码
 
 ```ts twoslash title="scan-upload.ts"
-import { scan } from '@ikenxuan/qrcode';
+import { scan } from '@ikenxuan/qrcode/browser';
 
 export async function scanFile(file: File): Promise<string | null> {
   const bytes = new Uint8Array(await file.arrayBuffer());
-  return scan(bytes);
+  return await scan(bytes);
 }
 ```
 

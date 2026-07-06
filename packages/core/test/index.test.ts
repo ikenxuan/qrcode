@@ -11,7 +11,7 @@ import { deflateSync, crc32 } from 'node:zlib'
  * 二维码，导致扫描时锁定内层 Logo 而非外层内容。纯色图片无定位图案，
  * 既零依赖又能让 Logo 扫描测试稳定。
  */
-function makeSolidPng (w: number, h: number, [r, g, b]: [number, number, number]): Uint8Array {
+const makeSolidPng = (w: number, h: number, [r, g, b]: [number, number, number]): Uint8Array => {
   const chunk = (type: string, data: Buffer): Buffer => {
     const typeBuf = Buffer.from(type, 'ascii')
     const lenBuf = Buffer.alloc(4)
@@ -47,14 +47,14 @@ mkdirSync(outDir, { recursive: true })
 
 describe('generate - 基础功能', () => {
   it('import 即用，无需初始化', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({ data: 'https://example.com' }, 'png')
     expect(buf).toBeInstanceOf(Uint8Array)
     expect(buf[0]).toBe(0x89)
   })
 
   it('支持字符串字面量参数', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'https://example.com',
       shape: 'square',
@@ -65,7 +65,7 @@ describe('generate - 基础功能', () => {
   })
 
   it('支持常量对象参数', async () => {
-    const { generate, OutputFormat, ShapeType, DotType } = await import('../dist/index.js')
+    const { generateSync: generate, OutputFormat, ShapeType, DotType } = await import('../dist/index.js')
     const buf = generate({
       data: 'https://example.com',
       shape: ShapeType.Square,
@@ -76,30 +76,46 @@ describe('generate - 基础功能', () => {
   })
 })
 
+describe('async API', () => {
+  it('generate / generateSvg / scan 返回 Promise 并可正常工作', async () => {
+    const { generate, generateSvg, scan } = await import('../dist/index.js')
+
+    const pngPromise = generate({ data: 'https://example.com' }, 'png')
+    expect(pngPromise).toBeInstanceOf(Promise)
+
+    const png = await pngPromise
+    expect(png).toBeInstanceOf(Uint8Array)
+    expect(png[0]).toBe(0x89)
+
+    await expect(generateSvg({ data: 'https://example.com' })).resolves.toContain('<svg')
+    await expect(scan(png)).resolves.toBe('https://example.com')
+  })
+})
+
 describe('generate - 输出格式', () => {
   it('png', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({ data: 'test' }, 'png')
     expect(buf[0]).toBe(0x89)
     writeFileSync(resolve(outDir, '01-默认.png'), buf)
   })
 
   it('jpeg', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({ data: 'test' }, 'jpeg')
     expect(buf[0]).toBe(0xff)
     writeFileSync(resolve(outDir, '02-默认.jpeg'), buf)
   })
 
   it('webp', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({ data: 'test' }, 'webp')
     expect(String.fromCharCode(...buf.slice(0, 4))).toBe('RIFF')
     writeFileSync(resolve(outDir, '03-默认.webp'), buf)
   })
 
   it('svg (二进制)', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({ data: 'test' }, 'svg')
     expect(new TextDecoder().decode(buf)).toContain('<svg')
     writeFileSync(resolve(outDir, '04-默认.svg'), buf)
@@ -108,7 +124,7 @@ describe('generate - 输出格式', () => {
 
 describe('generate - 编码输出', () => {
   it('base64 返回 string', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const b64 = generate({ data: 'https://example.com' }, 'png', 'base64')
     expect(typeof b64).toBe('string')
     const buf = Buffer.from(b64, 'base64')
@@ -116,13 +132,13 @@ describe('generate - 编码输出', () => {
   })
 
   it('binary 返回 Uint8Array', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({ data: 'https://example.com' }, 'png', 'binary')
     expect(buf).toBeInstanceOf(Uint8Array)
   })
 
   it('默认返回 Uint8Array', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({ data: 'https://example.com' }, 'png')
     expect(buf).toBeInstanceOf(Uint8Array)
   })
@@ -130,14 +146,14 @@ describe('generate - 编码输出', () => {
 
 describe('generateSvg', () => {
   it('返回有效 SVG 字符串', async () => {
-    const { generateSvg } = await import('../dist/index.js')
+    const { generateSvgSync: generateSvg } = await import('../dist/index.js')
     const svg = generateSvg({ data: 'https://example.com' })
     expect(svg).toContain('<svg')
     expect(svg).toContain('</svg>')
   })
 
   it('所有点阵类型', async () => {
-    const { generateSvg, DotType } = await import('../dist/index.js')
+    const { generateSvgSync: generateSvg, DotType } = await import('../dist/index.js')
     for (const dotType of Object.values(DotType)) {
       const svg = generateSvg({ data: 'https://example.com', dotsOptions: { dotType } })
       expect(svg).toContain('<svg')
@@ -148,7 +164,7 @@ describe('generateSvg', () => {
 
 describe('generate - 样式组合', () => {
   it('圆形 + 渐变 + 透明背景', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'https://github.com/ikenxuan',
       size: 400,
@@ -162,7 +178,7 @@ describe('generate - 样式组合', () => {
   })
 
   it('全配置组合', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'https://github.com/ikenxuan',
       size: 400,
@@ -180,7 +196,7 @@ describe('generate - 样式组合', () => {
 
 describe('generate - 颜色格式支持', () => {
   it('rgba() 半透明颜色', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'rounded', color: 'rgba(0, 0, 0, 0.5)' },
@@ -192,7 +208,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('rgb() 颜色', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'rounded', color: 'rgb(255, 0, 128)' },
@@ -201,7 +217,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('rgb() CSS4 空格语法带 alpha', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'rounded', color: 'rgb(255 0 0 / 0.5)' },
@@ -211,7 +227,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('hsl() 颜色', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'rounded', color: 'hsl(240, 100%, 50%)' },
@@ -220,7 +236,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('hsla() 半透明颜色', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'rounded', color: 'hsla(0, 100%, 50%, 0.5)' },
@@ -230,7 +246,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('hsl() CSS4 空格语法带 alpha', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'dots', color: 'hsl(120deg 80% 40% / 0.7)' },
@@ -240,7 +256,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('oklab() 颜色', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'rounded', color: 'oklab(0.5 0.1 -0.1)' },
@@ -249,7 +265,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('oklab() 带 alpha', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'rounded', color: 'oklab(0.5 0.1 -0.1 / 0.6)' },
@@ -259,7 +275,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('oklch() 颜色', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'rounded', color: 'oklch(0.7 0.15 150)' },
@@ -269,7 +285,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('oklch() 带 deg 和 alpha', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       dotsOptions: { dotType: 'dots', color: 'oklch(0.6 0.2 30deg / 50%)' },
@@ -279,7 +295,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('命名颜色 transparent', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'test',
       cornersSquareOptions: { cornerType: 'extra-rounded', color: 'red' },
@@ -289,7 +305,7 @@ describe('generate - 颜色格式支持', () => {
   })
 
   it('多种颜色格式混合使用', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const buf = generate({
       data: 'https://github.com/ikenxuan',
       size: 400,
@@ -309,7 +325,7 @@ describe('generate - Logo 嵌入', () => {
   const makeLogo = (): Uint8Array => makeSolidPng(120, 120, [255, 0, 0])
 
   it('generateSvg 会把 Logo 嵌入为 base64 <image> 元素', async () => {
-    const { generateSvg } = await import('../dist/index.js')
+    const { generateSvgSync: generateSvg } = await import('../dist/index.js')
     const logo = makeLogo()
 
     const svgNoLogo = generateSvg({ data: 'https://example.com', size: 300 })
@@ -329,7 +345,7 @@ describe('generate - Logo 嵌入', () => {
   })
 
   it('嵌入 Logo 的 PNG 仍可被扫描解码', async () => {
-    const { generate, scan } = await import('../dist/index.js')
+    const { generateSync: generate, scanSync: scan } = await import('../dist/index.js')
     const logo = makeLogo()
     const png = generate({
       data: 'https://github.com/ikenxuan/qrcode',
@@ -343,7 +359,7 @@ describe('generate - Logo 嵌入', () => {
   })
 
   it('hideBackgroundDots 开关均可正常生成', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const logo = makeLogo()
     for (const hide of [true, false]) {
       const buf = generate({
@@ -358,7 +374,7 @@ describe('generate - Logo 嵌入', () => {
   })
 
   it('仅传 image、不传 imageOptions 时使用默认参数', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const logo = makeLogo()
     const buf = generate({ data: 'https://example.com', size: 360, image: logo }, 'png')
     expect(buf).toBeInstanceOf(Uint8Array)
@@ -366,7 +382,7 @@ describe('generate - Logo 嵌入', () => {
   })
 
   it('Logo + 渐变点阵 + 透明背景组合', async () => {
-    const { generate } = await import('../dist/index.js')
+    const { generateSync: generate } = await import('../dist/index.js')
     const logo = makeLogo()
     const buf = generate({
       data: 'https://github.com/ikenxuan/qrcode',
@@ -384,21 +400,21 @@ describe('generate - Logo 嵌入', () => {
 
 describe('scan - 二维码扫描', () => {
   it('扫描 PNG 格式二维码', async () => {
-    const { generate, scan } = await import('../dist/index.js')
+    const { generateSync: generate, scanSync: scan } = await import('../dist/index.js')
     const png = generate({ data: 'https://example.com' }, 'png')
     const result = scan(png)
     expect(result).toBe('https://example.com')
   })
 
   it('扫描 WebP 格式二维码', async () => {
-    const { generate, scan } = await import('../dist/index.js')
+    const { generateSync: generate, scanSync: scan } = await import('../dist/index.js')
     const webp = generate({ data: 'hello world' }, 'webp')
     const result = scan(webp)
     expect(result).toBe('hello world')
   })
 
   it('扫描带样式的二维码', async () => {
-    const { generate, scan } = await import('../dist/index.js')
+    const { generateSync: generate, scanSync: scan } = await import('../dist/index.js')
     const buf = generate({
       data: 'https://github.com/ikenxuan',
       size: 400,
@@ -410,7 +426,7 @@ describe('scan - 二维码扫描', () => {
   })
 
   it('扫描透明背景二维码', async () => {
-    const { generate, scan } = await import('../dist/index.js')
+    const { generateSync: generate, scanSync: scan } = await import('../dist/index.js')
     const buf = generate({
       data: 'transparent-test',
       backgroundOptions: { transparent: true },
@@ -420,7 +436,7 @@ describe('scan - 二维码扫描', () => {
   })
 
   it('无效图片数据返回 null', async () => {
-    const { scan } = await import('../dist/index.js')
+    const { scanSync: scan } = await import('../dist/index.js')
     const result = scan(new Uint8Array([0, 1, 2, 3]))
     expect(result).toBeNull()
   })

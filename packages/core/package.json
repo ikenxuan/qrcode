@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
     }
   },
   "files": [
@@ -44,11 +48,12 @@
   "license": "MIT",
   "devDependencies": {
     "@ikenxuan/qrcode-wasm": "workspace:*",
+    "@types/node": "^24.13.2",
     "rolldown-plugin-wasm": "^0.3.2",
     "tsdown": "0.22.3",
     "typescript": "^6.0.3",
     "vite-plugin-wasm": "^3.6.0",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
-  "timestamp": "2026-07-03 01:26:51"
+  "timestamp": "2026-07-06 16:48:47"
 }

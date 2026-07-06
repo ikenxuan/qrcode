@@ -12,6 +12,9 @@ import {
   generate,
   generateSvg,
   scan,
+  generateSync,
+  generateSvgSync,
+  scanSync,
   DotType,
   CornerSquareType,
   CornerDotType,
@@ -34,6 +37,8 @@ import type {
 
 ## generate
 
+默认入口的 `generate()` 是 Node.js 异步 API，会返回 Promise。
+
 ```ts twoslash title="generate-signature.ts"
 import type { Encoding, GenerateResult, OutputFormat, QRCodeOptions } from '@ikenxuan/qrcode';
 
@@ -41,7 +46,7 @@ declare function generate<E extends Encoding = 'binary'>(
   options: QRCodeOptions,
   format: OutputFormat,
   encoding?: E,
-): GenerateResult<E>;
+): Promise<GenerateResult<E>>;
 ```
 
 | 参数 | 类型 | 说明 |
@@ -55,14 +60,78 @@ declare function generate<E extends Encoding = 'binary'>(
 ```ts twoslash title="generate-svg-signature.ts"
 import type { QRCodeOptions } from '@ikenxuan/qrcode';
 
-declare function generateSvg(options: QRCodeOptions): string;
+declare function generateSvg(options: QRCodeOptions): Promise<string>;
 ```
 
 ## scan
 
 ```ts twoslash title="scan-signature.ts"
-declare function scan(imageData: Uint8Array): string | null;
+declare function scan(imageData: Uint8Array): Promise<string | null>;
 ```
+
+## 同步 API
+
+同步 API 从默认入口导出，直接在当前线程调用 WASM：
+
+```ts twoslash title="sync-signatures.ts"
+import type { Encoding, GenerateResult, OutputFormat, QRCodeOptions } from '@ikenxuan/qrcode';
+
+declare function generateSync<E extends Encoding = 'binary'>(
+  options: QRCodeOptions,
+  format: OutputFormat,
+  encoding?: E,
+): GenerateResult<E>;
+
+declare function generateSvgSync(options: QRCodeOptions): string;
+
+declare function scanSync(imageData: Uint8Array): string | null;
+```
+
+## 浏览器入口
+
+浏览器和客户端组件使用 `@ikenxuan/qrcode/browser`，这个入口不会导入 Node.js 的 `worker_threads`。
+它的同名方法同样返回 Promise，并通过浏览器 Web Worker 执行 WASM 计算：
+
+```ts twoslash title="browser-import.ts"
+import {
+  generate,
+  generateSvg,
+  scan,
+} from '@ikenxuan/qrcode/browser';
+
+const png = await generate({ data: 'https://example.com' }, 'png');
+const svg = await generateSvg({ data: 'https://example.com' });
+const text = await scan(png);
+
+png;
+svg;
+text;
+```
+
+## 内部调用流程
+
+### Node.js 异步 API
+
+1. 用户调用 `await generate(options, format, encoding)`、`await generateSvg(options)` 或 `await scan(imageData)`。
+2. `dist/index.js` 创建 `node:worker_threads` 的 `Worker`，入口是同包里的 `dist/worker.js`。
+3. 主线程通过 `postMessage` 把 `{ method, options }` 或 `{ method, imageData }` 发给 worker。
+4. `dist/worker.js` 导入同步核心 chunk（例如 `sync-*.js`）。
+5. 同步核心 chunk 中包含内联 WASM，并调用 Rust 导出的 `generate`、`generateSvg` 或 `scan`。
+6. worker 把结果或序列化后的错误发回主线程，主线程 resolve / reject Promise。
+
+### 同步 API
+
+1. 用户调用 `generateSync()`、`generateSvgSync()` 或 `scanSync()`。
+2. `dist/index.js` 直接调用同步核心 chunk。
+3. 同步核心 chunk 直接进入内联 WASM 并返回结果。
+
+### 浏览器异步 API
+
+1. 用户从 `@ikenxuan/qrcode/browser` 调用 `await generate()`、`await generateSvg()` 或 `await scan()`。
+2. `dist/browser.js` 创建浏览器 Web Worker，入口是同包里的 `dist/browser-worker.js`。
+3. 主线程通过 `postMessage` 把任务发给 browser worker。
+4. `dist/browser-worker.js` 导入同步核心 chunk 并调用内联 WASM。
+5. browser worker 把结果发回主线程，主线程 resolve / reject Promise。
 
 ## QRCodeOptions
 

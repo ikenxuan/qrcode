@@ -79,13 +79,26 @@ export const cornerDotTypes: Array<SelectOption<CornerDotType>> = [
 ];
 
 export const colorPresets = [
+  '#111827',
+  '#ffffff',
+  '#ef4444',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#06b6d4',
+  '#3b82f6',
+  '#8b5cf6',
+  '#ec4899',
+  '#f43f5e',
   '#b7410e',
   '#dea584',
   '#5f2614',
   '#fff7ed',
   '#f6d2b0',
-  '#111827',
-  '#ffffff',
+  '#0f766e',
+  '#7c3aed',
+  '#020617',
+  '#f8fafc',
 ];
 
 export const installCommands = [

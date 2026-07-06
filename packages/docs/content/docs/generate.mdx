@@ -5,7 +5,8 @@ description: 使用 generate 和 generateSvg 输出 PNG、JPEG、WebP 或 SVG。
 
 # 生成二维码
 
-生成 API 由 `generate()` 与 `generateSvg()` 提供。前者适合统一处理多种格式，后者适合直接拿到 SVG 字符串。
+生成 API 由 `generate()` 与 `generateSvg()` 提供。默认入口中它们是 Node.js 异步方法；
+浏览器使用 `@ikenxuan/qrcode/browser` 中的异步同名方法。
 样式化和栅格渲染最终会进入
 [`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) 中的 Rust WASM 实现，
 底层生成能力来自 [`qr-code-styling`](https://crates.io/crates/qr-code-styling)。
@@ -15,7 +16,7 @@ description: 使用 generate 和 generateSvg 输出 PNG、JPEG、WebP 或 SVG。
 ```ts twoslash title="generate.ts" lineNumbers
 import { generate } from '@ikenxuan/qrcode';
 
-const image = generate({
+const image = await generate({
   data: 'https://github.com/ikenxuan/qrcode',
   size: 320,
   margin: 12,
@@ -25,12 +26,12 @@ image;
 // ^?
 ```
 
-默认返回 `Uint8Array`。如果第三个参数传入 `'base64'`，返回值会被推导为 `string`。
+Promise resolve 后默认得到 `Uint8Array`。如果第三个参数传入 `'base64'`，返回值会被推导为 `string`。
 
 ```ts twoslash title="base64.ts"
 import { generate } from '@ikenxuan/qrcode';
 
-const base64 = generate({ data: 'https://example.com' }, 'png', 'base64');
+const base64 = await generate({ data: 'https://example.com' }, 'png', 'base64');
 //    ^?
 
 const src = `data:image/png;base64,${base64}`;
@@ -41,7 +42,7 @@ const src = `data:image/png;base64,${base64}`;
 ```ts twoslash title="svg.ts"
 import { generateSvg } from '@ikenxuan/qrcode';
 
-const svg = generateSvg({
+const svg = await generateSvg({
   data: 'https://example.com',
   dotsOptions: {
     dotType: 'classy-rounded',
@@ -53,14 +54,14 @@ svg;
 // ^?
 ```
 
-也可以使用 `generate(options, 'svg')` 获取 SVG 的二进制数据。
+也可以使用 `await generate(options, 'svg')` 获取 SVG 的二进制数据。
 
 ## 样式化
 
 ```ts twoslash title="styled.ts" lineNumbers
 import { generate } from '@ikenxuan/qrcode';
 
-const image = generate({
+const image = await generate({
   data: 'https://github.com/ikenxuan/qrcode',
   size: 420,
   margin: 18,
@@ -100,7 +101,7 @@ import { generate } from '@ikenxuan/qrcode';
 
 const logo = readFileSync('logo.png');
 
-const qrcode = generate({
+const qrcode = await generate({
   data: 'https://example.com',
   size: 420,
   image: logo,
@@ -116,10 +117,12 @@ writeFileSync('qrcode.png', qrcode);
 
 ## 浏览器下载
 
-```ts twoslash title="download.ts"
-import { generate } from '@ikenxuan/qrcode';
+浏览器端使用 `@ikenxuan/qrcode/browser`，该入口不依赖 Node.js 内置模块，并通过 Web Worker 执行 WASM 计算。
 
-const bytes = generate({ data: location.href }, 'webp');
+```ts twoslash title="download.ts"
+import { generate } from '@ikenxuan/qrcode/browser';
+
+const bytes = await generate({ data: location.href }, 'webp');
 const url = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }));
 
 const link = document.createElement('a');

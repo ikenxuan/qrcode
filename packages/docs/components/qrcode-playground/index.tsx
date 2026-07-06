@@ -14,9 +14,14 @@ import { base64ByteLength, revokeObjectUrl } from './utils';
 
 export { HomeHero };
 
-export function QRCodePlayground() {
+export const QRCodePlayground = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef('');
+  const renderVersionRef = useRef(0);
+  const hasRenderedOnceRef = useRef(false);
+  const currentScanVersionRef = useRef(0);
+  const uploadScanVersionRef = useRef(0);
   const [qr, setQr] = useState<QRCodeModule | null>(null);
   const [state, setState] = useState(defaultPlaygroundState);
   const [logo, setLogo] = useState<LogoState>({ bytes: null, name: '', previewUrl: '' });
@@ -38,7 +43,7 @@ export function QRCodePlayground() {
   useEffect(() => {
     let active = true;
 
-    import('@ikenxuan/qrcode')
+    import('@ikenxuan/qrcode/browser')
       .then((module) => {
         if (active) setQr(module);
       })
@@ -54,43 +59,75 @@ export function QRCodePlayground() {
   useEffect(() => {
     if (!qr) return;
 
+    const renderVersion = ++renderVersionRef.current;
+    let cancelled = false;
     let nextUrl = '';
+    let committed = false;
     setIsRendering(true);
     setError('');
 
-    try {
-      if (state.format === 'svg') {
-        const svg = qr.generateSvg(options);
-        nextUrl = URL.createObjectURL(new Blob([svg], { type: mimeType }));
-        setByteLength(new TextEncoder().encode(svg).length);
-      }
-      else if (state.encoding === 'base64') {
-        const image = qr.generate(options, state.format, 'base64');
-        nextUrl = `data:${mimeType};base64,${image}`;
-        setByteLength(base64ByteLength(image));
-      }
-      else {
-        const image = qr.generate(options, state.format, 'binary');
-        nextUrl = URL.createObjectURL(new Blob([image], { type: mimeType }));
-        setByteLength(image.length);
-      }
+    const render = async () => {
+      try {
+        let nextByteLength = 0;
 
-      setPreviewUrl((current) => {
-        revokeObjectUrl(current);
-        return nextUrl;
-      });
-    }
-    catch (reason) {
-      setError(reason instanceof Error ? reason.message : '生成失败');
-    }
-    finally {
-      setIsRendering(false);
-    }
+        if (state.format === 'svg') {
+          const svg = await qr.generateSvg(options);
+          nextUrl = URL.createObjectURL(new Blob([svg], { type: mimeType }));
+          nextByteLength = new TextEncoder().encode(svg).length;
+        }
+        else if (state.encoding === 'base64') {
+          const image = await qr.generate(options, state.format, 'base64');
+          nextUrl = `data:${mimeType};base64,${image}`;
+          nextByteLength = base64ByteLength(image);
+        }
+        else {
+          const image = await qr.generate(options, state.format, 'binary');
+          nextUrl = URL.createObjectURL(new Blob([image], { type: mimeType }));
+          nextByteLength = image.length;
+        }
+
+        if (cancelled || renderVersion !== renderVersionRef.current) {
+          revokeObjectUrl(nextUrl);
+          return;
+        }
+
+        setByteLength(nextByteLength);
+        previewUrlRef.current = nextUrl;
+        committed = true;
+        hasRenderedOnceRef.current = true;
+        setPreviewUrl((current) => {
+          revokeObjectUrl(current);
+          return nextUrl;
+        });
+      }
+      catch (reason) {
+        if (!cancelled && renderVersion === renderVersionRef.current) {
+          setError(reason instanceof Error ? reason.message : '生成失败');
+        }
+      }
+      finally {
+        if (!cancelled && renderVersion === renderVersionRef.current) {
+          setIsRendering(false);
+        }
+      }
+    };
+
+    const renderDelay = window.setTimeout(() => {
+      void render();
+    }, hasRenderedOnceRef.current ? 32 : 0);
 
     return () => {
-      revokeObjectUrl(nextUrl);
+      cancelled = true;
+      window.clearTimeout(renderDelay);
+      if (!committed) revokeObjectUrl(nextUrl);
     };
   }, [mimeType, options, qr, state.encoding, state.format]);
+
+  useEffect(() => {
+    return () => {
+      revokeObjectUrl(previewUrlRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -98,35 +135,49 @@ export function QRCodePlayground() {
     };
   }, [logo.previewUrl]);
 
-  async function scanCurrent() {
+  const scanCurrent = async () => {
     if (!qr) return;
 
     setScanResult('扫描中...');
 
+    const scanVersion = ++currentScanVersionRef.current;
+
     try {
-      const image = qr.generate(options, 'png', 'binary');
-      setScanResult(qr.scan(image) ?? '未识别到二维码');
+      const image = await qr.generate(options, 'png', 'binary');
+      const result = await qr.scan(image);
+      if (scanVersion === currentScanVersionRef.current) {
+        setScanResult(result ?? '未识别到二维码');
+      }
     }
     catch (reason) {
-      setScanResult(reason instanceof Error ? reason.message : '扫描失败');
+      if (scanVersion === currentScanVersionRef.current) {
+        setScanResult(reason instanceof Error ? reason.message : '扫描失败');
+      }
     }
-  }
+  };
 
-  async function scanUpload(file: File | undefined) {
+  const scanUpload = async (file: File | undefined) => {
     if (!file || !qr) return;
 
     setUploadResult('扫描中...');
 
+    const scanVersion = ++uploadScanVersionRef.current;
+
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      setUploadResult(qr.scan(bytes) ?? '未识别到二维码');
+      const result = await qr.scan(bytes);
+      if (scanVersion === uploadScanVersionRef.current) {
+        setUploadResult(result ?? '未识别到二维码');
+      }
     }
     catch (reason) {
-      setUploadResult(reason instanceof Error ? reason.message : '扫描失败');
+      if (scanVersion === uploadScanVersionRef.current) {
+        setUploadResult(reason instanceof Error ? reason.message : '扫描失败');
+      }
     }
-  }
+  };
 
-  async function pickLogo(file: File | undefined) {
+  const pickLogo = async (file: File | undefined) => {
     if (!file) return;
 
     try {
@@ -141,25 +192,25 @@ export function QRCodePlayground() {
     catch (reason) {
       setError(reason instanceof Error ? reason.message : '读取 Logo 失败');
     }
-  }
+  };
 
-  function removeLogo() {
+  const removeLogo = () => {
     setLogo((current) => {
       revokeObjectUrl(current.previewUrl);
       return { bytes: null, name: '', previewUrl: '' };
     });
-  }
+  };
 
-  function downloadPreview() {
+  const downloadPreview = () => {
     if (!previewUrl) return;
 
     const anchor = document.createElement('a');
     anchor.href = previewUrl;
     anchor.download = `ikenxuan-qrcode.${fileExtensions[state.format]}`;
     anchor.click();
-  }
+  };
 
-  async function copySample(sample: CodeSample) {
+  const copySample = async (sample: CodeSample) => {
     try {
       await navigator.clipboard.writeText(sample.code);
       setCopiedCodeKey(sample.key);
@@ -173,7 +224,7 @@ export function QRCodePlayground() {
         description: '浏览器没有授予剪贴板写入权限。',
       });
     }
-  }
+  };
 
   return (
     <section className="mx-auto flex min-w-0 w-full max-w-7xl flex-col gap-5 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -233,4 +284,4 @@ export function QRCodePlayground() {
       />
     </section>
   );
-}
+};

@@ -1,6 +1,6 @@
 ---
 title: 快速开始
-description: 安装 @ikenxuan/qrcode，并在浏览器或 Node.js 中生成与扫描二维码。
+description: 安装 @ikenxuan/qrcode，并在 Node.js 或浏览器中生成与扫描二维码。
 ---
 
 # 快速开始
@@ -57,20 +57,36 @@ bun add @ikenxuan/qrcode
   </Tab>
 </Tabs>
 
-## 最小调用
+## Node.js 异步调用
 
 ```ts twoslash title="quick-start.ts"
 import { generate, generateSvg, scan } from '@ikenxuan/qrcode';
 
-const png = generate({ data: 'https://example.com' }, 'png');
-//    ^?
+const png = await generate({ data: 'https://example.com' }, 'png');
+//     ^?
 
-const svg = generateSvg({ data: 'https://example.com' });
-//    ^?
+const svg = await generateSvg({ data: 'https://example.com' });
+//     ^?
 
-const text = scan(png);
-//    ^?
+const text = await scan(png);
+//     ^?
 ```
+
+默认入口 `@ikenxuan/qrcode` 面向 Node.js。`generate()`、`generateSvg()` 和 `scan()` 会返回 Promise，
+内部通过 `worker_threads` 调用 WASM，避免长时间生成或扫描阻塞主线程。
+
+## 浏览器调用
+
+```ts twoslash title="browser.ts"
+import { generate, generateSvg, scan } from '@ikenxuan/qrcode/browser';
+
+const png = await generate({ data: location.href }, 'png');
+const svg = await generateSvg({ data: location.href });
+const text = await scan(png);
+```
+
+浏览器、React Client Component、Vue SFC 等客户端环境应使用 `@ikenxuan/qrcode/browser`。
+这个入口不会导入 Node.js 的 `worker_threads`，会通过浏览器 Web Worker 执行 WASM 计算。
 
 ## 工作方式
 
@@ -86,7 +102,7 @@ const text = scan(png);
 
 ### 生成图片
 
-通过 `generate()` 输出二进制，或使用 `generateSvg()` 直接获得 SVG 字符串。
+Node.js 中通过异步 API 输出二进制或 SVG；浏览器中通过 `/browser` 入口的异步 API 生成。
 
 </Step>
 <Step>
@@ -111,6 +127,6 @@ const text = scan(png);
 
 | 环境 | 说明 |
 | --- | --- |
-| 浏览器 | 可生成预览、下载二维码、扫描用户上传图片。 |
-| Node.js | 可批量生成文件、读取本地图片并扫码。 |
+| Node.js | 默认入口支持异步 worker 调度，也提供 `Sync` 同步方法。 |
+| 浏览器 | 使用 `@ikenxuan/qrcode/browser`，通过 Web Worker 生成预览、下载二维码、扫描用户上传图片。 |
 | ESM | 包为 ESM，适合现代 Next.js、Vite、Node.js ESM 项目。 |

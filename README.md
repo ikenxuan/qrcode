@@ -1,6 +1,6 @@
 # @ikenxuan/qrcode
 
-基于 Rust [qr-code-styling](https://crates.io/crates/qr-code-styling) + [rxing](https://crates.io/crates/rxing) 的高性能 QR 码生成与扫描工具，通过 WebAssembly 提供跨平台支持。
+基于 Rust [qr-code-styling](https://crates.io/crates/qr-code-styling) + [rxing](https://crates.io/crates/rxing) 的高性能 QR 码生成与扫描工具，通过 WebAssembly 提供高性能核心。
 
 ## 特性
 
@@ -25,7 +25,8 @@
 ### 通用
 
 - WASM 内联，无需外部 .wasm 文件，下游打包零配置
-- Node.js 和浏览器通用，import 即用，无需初始化
+- Node.js import 即用，无需初始化
+- 浏览器端使用 `@ikenxuan/qrcode/browser` 子路径入口
 
 ## 使用
 
@@ -33,12 +34,12 @@
 import { generate, generateSvg, scan } from '@ikenxuan/qrcode'
 
 // 生成
-const png = generate({ data: 'https://example.com' }, 'png')
-const b64 = generate({ data: 'https://example.com' }, 'png', 'base64')
-const svg = generateSvg({ data: 'https://example.com' })
+const png = await generate({ data: 'https://example.com' }, 'png')
+const b64 = await generate({ data: 'https://example.com' }, 'png', 'base64')
+const svg = await generateSvg({ data: 'https://example.com' })
 
 // 扫描
-const result = scan(png) // 'https://example.com'
+const result = await scan(png) // 'https://example.com'
 ```
 
 完整文档请查看 [packages/core/README.md](./packages/core/README.md)。

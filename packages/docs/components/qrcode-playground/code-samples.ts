@@ -96,7 +96,7 @@ import type { QRCodeOptions } from '@ikenxuan/qrcode';
 ${hasLogo ? "\nconst logo = readFileSync('./logo.png');\n" : ''}
 ${optionsCode}
 
-const svg = generateSvg(options);
+const svg = await generateSvg(options);
 writeFileSync('qrcode.${extension}', svg);`;
   }
 
@@ -113,10 +113,10 @@ import type { GenerateResult, QRCodeOptions } from '@ikenxuan/qrcode';
 ${hasLogo ? "\nconst logo = readFileSync('./logo.png');\n" : ''}
 ${optionsCode}
 
-const image: GenerateResult<'${state.encoding}'> = generate(options, '${state.format}', '${state.encoding}');
+const image: GenerateResult<'${state.encoding}'> = await generate(options, '${state.format}', '${state.encoding}');
 ${writeFile}
 
-const text = scan(${scanInput});
+const text = await scan(${scanInput});
 console.log(text);`;
 }
 
@@ -141,15 +141,15 @@ function createReactSample(state: PlaygroundState, hasLogo: boolean) {
   let renderCode: string;
 
   if (state.format === 'svg') {
-    renderCode = `      const svg = generateSvg(options);
+    renderCode = `      const svg = await generateSvg(options);
       setSrc('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));`;
   }
   else if (state.encoding === 'base64') {
-    renderCode = `      const image = generate(options, '${state.format}', 'base64');
+    renderCode = `      const image = await generate(options, '${state.format}', 'base64');
       setSrc('data:${mimeTypes[state.format]};base64,' + image);`;
   }
   else {
-    renderCode = `      const image = generate(options, '${state.format}', 'binary');
+    renderCode = `      const image = await generate(options, '${state.format}', 'binary');
       objectUrl = URL.createObjectURL(new Blob([image], { type: '${mimeTypes[state.format]}' }));
       setSrc(objectUrl);`;
   }
@@ -157,8 +157,8 @@ function createReactSample(state: PlaygroundState, hasLogo: boolean) {
   return `'use client';
 
 import { useEffect, useState } from 'react';
-import { generate, generateSvg } from '@ikenxuan/qrcode';
-import type { QRCodeOptions } from '@ikenxuan/qrcode';
+import { generate, generateSvg } from '@ikenxuan/qrcode/browser';
+import type { QRCodeOptions } from '@ikenxuan/qrcode/browser';
 
 export function QRCodePreview() {
   const [src, setSrc] = useState('');
@@ -204,15 +204,15 @@ function createVueSample(state: PlaygroundState, hasLogo: boolean) {
   let renderCode: string;
 
   if (state.format === 'svg') {
-    renderCode = `  const svg = generateSvg(options);
+    renderCode = `  const svg = await generateSvg(options);
   src.value = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);`;
   }
   else if (state.encoding === 'base64') {
-    renderCode = `  const image = generate(options, '${state.format}', 'base64');
+    renderCode = `  const image = await generate(options, '${state.format}', 'base64');
   src.value = 'data:${mimeTypes[state.format]};base64,' + image;`;
   }
   else {
-    renderCode = `  const image = generate(options, '${state.format}', 'binary');
+    renderCode = `  const image = await generate(options, '${state.format}', 'binary');
   objectUrl = URL.createObjectURL(new Blob([image], { type: '${mimeTypes[state.format]}' }));
   src.value = objectUrl;`;
   }
@@ -223,8 +223,8 @@ function createVueSample(state: PlaygroundState, hasLogo: boolean) {
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { generate, generateSvg } from '@ikenxuan/qrcode';
-import type { QRCodeOptions } from '@ikenxuan/qrcode';
+import { generate, generateSvg } from '@ikenxuan/qrcode/browser';
+import type { QRCodeOptions } from '@ikenxuan/qrcode/browser';
 
 const src = ref('');
 let objectUrl = '';
@@ -262,14 +262,14 @@ function createBrowserSample(state: PlaygroundState, hasLogo: boolean) {
   let renderCode: string;
 
   if (state.format === 'svg') {
-    renderCode = `  target.innerHTML = generateSvg(options);`;
+    renderCode = `  target.innerHTML = await generateSvg(options);`;
   }
   else if (state.encoding === 'base64') {
-    renderCode = `  const image = generate(options, '${state.format}', 'base64');
+    renderCode = `  const image = await generate(options, '${state.format}', 'base64');
   target.innerHTML = '<img alt="QR Code" src="data:${mimeTypes[state.format]};base64,' + image + '" />';`;
   }
   else {
-    renderCode = `  const image = generate(options, '${state.format}', 'binary');
+    renderCode = `  const image = await generate(options, '${state.format}', 'binary');
   const url = URL.createObjectURL(new Blob([image], { type: '${mimeTypes[state.format]}' }));
   target.innerHTML = '<img alt="QR Code" src="' + url + '" />';`;
   }
@@ -277,7 +277,7 @@ function createBrowserSample(state: PlaygroundState, hasLogo: boolean) {
   return `<div id="qrcode"></div>
 
 <script type="module">
-  import { generate, generateSvg } from 'https://esm.sh/@ikenxuan/qrcode';
+  import { generate, generateSvg } from 'https://esm.sh/@ikenxuan/qrcode/browser';
 
   const target = document.querySelector('#qrcode');
 ${logoFetch}${optionsCode}

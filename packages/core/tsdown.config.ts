@@ -1,13 +1,10 @@
-import { defineConfig } from 'tsdown'
+import { defineConfig, type UserConfig } from 'tsdown'
 import { wasm } from 'rolldown-plugin-wasm'
 
-export default defineConfig({
-  entry: ['src/index.ts'],
+const commonConfig: UserConfig = {
   outDir: 'dist',
   format: 'esm',
   dts: true,
-  platform: 'node',
-  clean: true,
   outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
   plugins: [
     wasm({
@@ -18,4 +15,31 @@ export default defineConfig({
   deps: {
     alwaysBundle: [/@ikenxuan\/qrcode-wasm/],
   },
-})
+}
+
+export default defineConfig([
+  {
+    ...commonConfig,
+    entry: [
+      // Public Node.js package entry.
+      'src/index.ts',
+
+      // Runtime worker file loaded by src/index.ts.
+      'src/worker.ts',
+    ],
+    platform: 'node',
+    clean: true,
+  },
+  {
+    ...commonConfig,
+    entry: [
+      // Public browser package entry.
+      'src/browser.ts',
+
+      // Runtime worker file loaded by src/browser.ts.
+      'src/browser-worker.ts',
+    ],
+    platform: 'browser',
+    clean: false,
+  },
+])

@@ -10,7 +10,7 @@ description: 常见业务场景中的 @ikenxuan/qrcode 调用方式。
 ```ts twoslash title="rust-theme.ts" lineNumbers
 import { generate } from '@ikenxuan/qrcode';
 
-const image = generate({
+const image = await generate({
   data: 'https://github.com/ikenxuan/qrcode',
   size: 360,
   margin: 16,
@@ -49,7 +49,7 @@ import { generate, scan } from '@ikenxuan/qrcode';
 const logo = readFileSync('brand.png');
 const data = 'https://github.com/ikenxuan/qrcode';
 
-const image = generate({
+const image = await generate({
   data,
   size: 420,
   image: logo,
@@ -61,7 +61,7 @@ const image = generate({
 }, 'png');
 
 // 自检：确认嵌入 Logo 后依旧可解码
-if (scan(image) !== data) {
+if (await scan(image) !== data) {
   throw new Error('嵌入 Logo 后二维码无法解码，请调小 imageSize');
 }
 ```
@@ -70,16 +70,21 @@ if (scan(image) !== data) {
 
 ```tsx twoslash title="QRCodePreview.tsx"
 import React, { useEffect, useState } from 'react';
-import { generate } from '@ikenxuan/qrcode';
+import { generate } from '@ikenxuan/qrcode/browser';
 
 export function QRCodePreview() {
   const [src, setSrc] = useState('');
 
   useEffect(() => {
-    const bytes = generate({ data: location.href }, 'png');
-    const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+    let url = '';
 
-    setSrc(url);
+    async function render() {
+      const bytes = await generate({ data: location.href }, 'png');
+      url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+      setSrc(url);
+    }
+
+    void render();
     return () => URL.revokeObjectURL(url);
   }, []);
 
@@ -93,7 +98,7 @@ export function QRCodePreview() {
 import { DotType, generate } from '@ikenxuan/qrcode';
 
 for (const dotType of Object.values(DotType)) {
-  const image = generate({
+  const image = await generate({
     data: `dot type: ${dotType}`,
     dotsOptions: { dotType },
   }, 'webp');
@@ -108,8 +113,8 @@ for (const dotType of Object.values(DotType)) {
 import { generate, scan } from '@ikenxuan/qrcode';
 
 const expected = 'https://example.com/pay?id=2026';
-const image = generate({ data: expected }, 'png');
-const actual = scan(image);
+const image = await generate({ data: expected }, 'png');
+const actual = await scan(image);
 
 if (actual !== expected) {
   throw new Error('QR code verification failed');
