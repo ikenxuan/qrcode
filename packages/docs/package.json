@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "next build --webpack",
+    "build": "next build",
     "dev": "next dev",
     "start": "next start",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
@@ -11,7 +11,7 @@
     "lint": "oxlint"
   },
   "dependencies": {
-    "@ikenxuan/qrcode": "1.2.0",
+    "@ikenxuan/qrcode": "1.4.0",
     "@heroui/react": "^3.2.1",
     "@heroui/styles": "^3.2.1",
     "cnfast": "^0.0.8",
