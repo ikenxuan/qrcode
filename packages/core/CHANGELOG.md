@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/ikenxuan/qrcode/compare/v1.4.0...v1.5.0) (2026-07-10)
+
+
+### ✨ 新功能
+
+* 添加 Logo 圆角裁剪功能，更新相关文档和示例 ([8ad8c2a](https://github.com/ikenxuan/qrcode/commit/8ad8c2a8a9520bbfb765405232cd2e8aa8c5d6d1))
+
 ## [1.4.0](https://github.com/ikenxuan/qrcode/compare/v1.3.0...v1.4.0) (2026-07-06)
 
 
