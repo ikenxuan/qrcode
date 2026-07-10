@@ -128,6 +128,13 @@ export interface ImageOptions {
   /** Logo 周围的留白像素，默认 `0` */
   margin?: number
   /**
+   * Logo 圆角比例，范围 `0.0` ~ `0.5`，默认 `0`。
+   *
+   * `0` 保留原始直角，`0.5` 可将正方形 Logo 裁剪为圆形。
+   * 该选项只裁剪 Logo 图片，不改变 {@link hideBackgroundDots} 的矩形挖空区域。
+   */
+  round?: number
+  /**
    * 是否挖空 Logo 区域下方的点阵，默认 `true`。
    *
    * 开启后 Logo 不会与点阵图案叠加，视觉更干净。

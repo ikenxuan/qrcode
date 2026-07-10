@@ -160,7 +160,7 @@ options;
 | `cornersDotOptions` | 定位角内部点样式。 |
 | `backgroundOptions` | 背景色、透明背景、背景渐变和圆角。 |
 | `image` | Logo 图片二进制数据。 |
-| `imageOptions` | Logo 尺寸、留白和背景点阵处理。 |
+| `imageOptions` | Logo 尺寸、留白、圆角和背景点阵处理。 |
 
 ## ImageOptions
 
@@ -177,6 +177,7 @@ const options: QRCodeOptions = {
   imageOptions: {
     imageSize: 0.22,
     margin: 8,
+    round: 0.16,
     hideBackgroundDots: true,
   },
 };
@@ -189,6 +190,7 @@ options.imageOptions;
 | --- | --- | --- |
 | `imageSize` | `number` | Logo 占二维码的比例，范围 `0.0 ~ 1.0`。建议 `≤ 0.25`，过大可能导致无法扫描。 |
 | `margin` | `number` | Logo 周围的留白像素。 |
+| `round` | `number` | Logo 圆角比例，范围 `0.0 ~ 0.5`；`0.5` 可将正方形 Logo 裁剪为圆形。只影响 Logo，不改变点阵挖空区域。 |
 | `hideBackgroundDots` | `boolean` | 是否挖空 Logo 区域下方的点阵，避免图案叠加干扰。 |
 
 <Callout type="info">

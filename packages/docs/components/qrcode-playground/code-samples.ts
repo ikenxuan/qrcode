@@ -67,6 +67,7 @@ function createOptionsCode({
       '  imageOptions: {',
       `    imageSize: ${state.imageSize},`,
       `    margin: ${state.logoMargin},`,
+      `    round: ${state.logoRound},`,
       `    hideBackgroundDots: ${state.hideBackgroundDots},`,
       '  },',
     );

@@ -344,6 +344,31 @@ describe('generate - Logo 嵌入', () => {
     writeFileSync(resolve(outDir, '21-Logo嵌入.svg'), svgLogo)
   })
 
+  it('round 会在嵌入前将 Logo 裁剪为带透明圆角的 PNG', async () => {
+    const { generateSvgSync: generateSvg } = await import('../dist/index.js')
+    const logo = makeLogo()
+    const sourceBase64 = Buffer.from(logo).toString('base64')
+
+    const squareSvg = generateSvg({
+      data: 'https://example.com',
+      image: logo,
+      imageOptions: { round: 0 },
+    })
+    expect(squareSvg).toContain(`data:image/png;base64,${sourceBase64}`)
+
+    const roundedSvg = generateSvg({
+      data: 'https://example.com',
+      image: logo,
+      imageOptions: { round: 0.5 },
+    })
+    const embeddedImage = roundedSvg.match(/<image href="data:image\/png;base64,([^"]+)"/i)?.[1]
+
+    expect(embeddedImage).toBeTruthy()
+    expect(embeddedImage).not.toBe(sourceBase64)
+    expect(Buffer.from(embeddedImage!, 'base64').subarray(0, 4)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+    writeFileSync(resolve(outDir, '24-Logo圆角.svg'), roundedSvg)
+  })
+
   it('嵌入 Logo 的 PNG 仍可被扫描解码', async () => {
     const { generateSync: generate, scanSync: scan } = await import('../dist/index.js')
     const logo = makeLogo()
@@ -351,7 +376,7 @@ describe('generate - Logo 嵌入', () => {
       data: 'https://github.com/ikenxuan/qrcode',
       size: 400,
       image: logo,
-      imageOptions: { imageSize: 0.22, margin: 6, hideBackgroundDots: true },
+      imageOptions: { imageSize: 0.22, margin: 6, round: 0.18, hideBackgroundDots: true },
     }, 'png')
     expect(png[0]).toBe(0x89)
     expect(scan(png)).toBe('https://github.com/ikenxuan/qrcode')

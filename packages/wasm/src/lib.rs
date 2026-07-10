@@ -7,8 +7,10 @@ use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 mod color;
+mod logo;
 mod scan;
 use color::parse_color;
+use logo::round_logo_corners;
 use scan::scan_qr;
 
 // ─── 配置结构体（从 JS 侧反序列化） ───────────────────────────────────────────
@@ -49,6 +51,7 @@ struct CornersDotOpts {
 struct ImgOpts {
     image_size: Option<f64>,
     margin: Option<u32>,
+    round: Option<f64>,
     hide_background_dots: Option<bool>,
 }
 
@@ -177,7 +180,12 @@ fn build_qr(opts: QRCodeOpts) -> Result<QRCodeStyling, String> {
     }
 
     if let Some(ref img) = opts.image {
-        builder = builder.image(img.clone());
+        let image = if let Some(round) = opts.image_options.as_ref().and_then(|io| io.round) {
+            round_logo_corners(img, round)?
+        } else {
+            img.clone()
+        };
+        builder = builder.image(image);
     }
 
     if let Some(ref io) = opts.image_options {

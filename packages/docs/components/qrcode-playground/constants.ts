@@ -38,6 +38,7 @@ export const defaultPlaygroundState: PlaygroundState = {
   transparentBackground: false,
   imageSize: 0.2,
   logoMargin: 6,
+  logoRound: 0.16,
   hideBackgroundDots: true,
 };
 

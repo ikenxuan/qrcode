@@ -50,6 +50,7 @@ export function buildQRCodeOptions(state: PlaygroundState, logoBytes: Uint8Array
           imageOptions: {
             imageSize: state.imageSize,
             margin: state.logoMargin,
+            round: state.logoRound,
             hideBackgroundDots: state.hideBackgroundDots,
           },
         }

@@ -290,7 +290,7 @@ export function PlaygroundControls({
 
       <FieldSection
         title="中心 Logo"
-        description="嵌入 PNG / JPEG / WebP 图片，并同步 imageOptions 的占比、留白和挖空点阵配置。"
+        description="嵌入 PNG / JPEG / WebP 图片，并同步 imageOptions 的占比、留白、圆角和挖空点阵配置。"
       >
         <input
           ref={logoInputRef}
@@ -347,6 +347,15 @@ export function PlaygroundControls({
               step={1}
               value={state.logoMargin}
               onChange={(logoMargin) => patchState({ logoMargin })}
+            />
+            <NumberSetting
+              describe={(value) => `圆角 ${Math.round(value * 100)}%`}
+              label="Logo 圆角"
+              maxValue={0.5}
+              minValue={0}
+              step={0.02}
+              value={state.logoRound}
+              onChange={(logoRound) => patchState({ logoRound })}
             />
             <Checkbox
               isSelected={state.hideBackgroundDots}

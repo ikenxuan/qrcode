@@ -99,7 +99,7 @@ interface QRCodeOptions {
   cornersDotOptions?: CornersDotOptions
   backgroundOptions?: BackgroundOptions
   image?: Uint8Array          // Logo 图片数据
-  imageOptions?: ImageOptions
+  imageOptions?: ImageOptions // Logo 尺寸、留白、圆角与点阵挖空配置
 }
 ```
 
@@ -116,6 +116,17 @@ interface QRCodeOptions {
 | ShapeType | `'square'`, `'circle'` |
 
 也可以使用常量对象：`DotType.Rounded`、`OutputFormat.Png` 等。
+
+### ImageOptions
+
+```ts
+interface ImageOptions {
+  imageSize?: number          // Logo 占二维码的比例，默认 0.4，建议不超过 0.25
+  margin?: number             // Logo 周围留白像素，默认 0
+  round?: number              // Logo 圆角比例 0.0 ~ 0.5，默认 0
+  hideBackgroundDots?: boolean // 是否挖空 Logo 下方点阵，默认 true
+}
+```
 
 ### BackgroundOptions
 

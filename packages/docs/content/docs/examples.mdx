@@ -56,6 +56,7 @@ const image = await generate({
   imageOptions: {
     imageSize: 0.22,        // Logo 占二维码的比例，建议 ≤ 0.25
     margin: 8,              // Logo 四周留白
+    round: 0.16,            // Logo 圆角比例，0.5 可裁剪为圆形
     hideBackgroundDots: true, // 挖空 Logo 下方点阵，避免叠加干扰
   },
 }, 'png');

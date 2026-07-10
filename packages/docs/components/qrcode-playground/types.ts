@@ -41,6 +41,7 @@ export interface PlaygroundState {
   transparentBackground: boolean;
   imageSize: number;
   logoMargin: number;
+  logoRound: number;
   hideBackgroundDots: boolean;
 }
 
