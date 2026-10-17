@@ -12,5 +12,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "benchmark/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "benchmark/**/*.ts", "tsdown.config.ts", "vitest.config.ts"]
 }

@@ -1,11 +1,17 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import './global.css';
-import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import type { Metadata } from 'next';
 import { ToastProvider } from '@/components/toast-provider';
 
-const inter = Inter({
-  subsets: ['latin'],
+// 自托管 Inter：next/font/google 在构建/dev 时需要访问 fonts.gstatic.com，
+// 该域名在部分网络环境下不可达，会让 Turbopack 直接报
+// "Can't resolve '@vercel/turbopack-next/internal/font/google/font'"。
+// 字体文件取自 @fontsource-variable/inter@5.2.8 的 latin 可变字重子集。
+const inter = localFont({
+  src: './fonts/inter-latin-wght-normal.woff2',
+  weight: '100 900',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
