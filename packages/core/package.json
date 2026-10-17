@@ -22,9 +22,12 @@
     "package.json"
   ],
   "scripts": {
-    "build": "tsdown && pnpm run test",
+    "build": "tsdown && pnpm run typecheck && pnpm run test",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "bench": "node --expose-gc benchmark/run.ts",
+    "bench:react": "node --expose-gc benchmark/react-ssr.ts"
   },
   "repository": {
     "type": "git",
@@ -49,11 +52,15 @@
   "devDependencies": {
     "@ikenxuan/qrcode-wasm": "workspace:*",
     "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "rolldown-plugin-wasm": "^0.3.2",
     "tsdown": "0.22.4",
     "typescript": "^6.0.3",
     "vite-plugin-wasm": "^3.6.0",
     "vitest": "^4.1.10"
   },
-  "timestamp": "2026-07-11 01:52:34"
+  "timestamp": "2026-10-17 19:32:24"
 }

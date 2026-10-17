@@ -1,7 +1,10 @@
 use qr_code_styling::{
-    config::{BackgroundOptions, CornersSquareOptions, CornersDotOptions, DotsOptions, Gradient, ImageOptions},
+    config::{
+        BackgroundOptions, CornersSquareOptions, CornersDotOptions, DotsOptions, Gradient,
+        ImageOptions, QROptions,
+    },
     types::{CornerDotType, CornerSquareType, DotType},
-    OutputFormat, QRCodeStyling, ShapeType,
+    Mode, OutputFormat, QRCodeStyling, ShapeType,
 };
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
@@ -116,6 +119,14 @@ fn build_qr(opts: QRCodeOpts) -> Result<QRCodeStyling, String> {
     let mut builder = QRCodeStyling::builder();
     builder = builder.data(&opts.data);
     builder = builder.size(opts.size.unwrap_or(300));
+
+    // 必须显式指定编码模式。默认的 encode_auto 会按 Shift_JIS 的首/尾字节区间
+    // 识别汉字，而 UTF-8 中文的三字节序列（1110xxxx 10xxxxxx 10xxxxxx）恰好落进
+    // 那些区间，于是被当成 Shift_JIS 双字节码写进 Kanji 模式分段 —— Kanji 模式按
+    // 规范就是 Shift_JIS，这种码任何解码器读出来都是乱码，手机扫也一样。
+    // 这里按 JS 版 qr-code-styling 的规则整串只用一个模式：全数字 Numeric、
+    // 全大写字母数字 Alphanumeric、其余 Byte，代价只是放弃混合内容的最优切分。
+    builder = builder.qr_options(QROptions::new().with_mode(Mode::detect(&opts.data)));
 
     if let Some(margin) = opts.margin {
         builder = builder.margin(margin);

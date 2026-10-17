@@ -465,4 +465,53 @@ describe('scan - 二维码扫描', () => {
     const result = scan(new Uint8Array([0, 1, 2, 3]))
     expect(result).toBeNull()
   })
+
+  it('各点阵类型生成的二维码均可回读', async () => {
+    // 以下回归守卫：qr-code-styling 0.2.4 改写了带样式点阵的 SVG 路径，
+    // 而原先只有 square 这一种（恰好未受影响）被扫描测试覆盖到。
+    const { generateSync: generate, scanSync: scan, DotType } = await import('../dist/index.js')
+    const payload = 'https://github.com/ikenxuan/qrcode'
+    for (const dotType of Object.values(DotType)) {
+      const png = generate({ data: payload, size: 500, dotsOptions: { dotType } }, 'png')
+      expect(scan(png), `dotType=${dotType}`).toBe(payload)
+    }
+  })
+
+  it('英文与中文内容均能正确回读', async () => {
+    // 回归守卫：扫描端在无 ECI 的 Byte 分段上会走 ZXing 式字符集启发式猜测，
+    // 判据极脆 ——「小红书扫码登录」被猜成 Shift_JIS 后解码失败返回 null，
+    // 而少一个字的「红书扫码登录」却正常。英文与中文都必须通过。
+    const { generateSync: generate, scanSync: scan } = await import('../dist/index.js')
+    const cases = [
+      'hello world',
+      'https://example.com/login?token=abc123',
+      '你好',
+      '小红书扫码登录',
+      '红书扫码登录',
+      '一二三四五六七八九十',
+      '订单 A2024 已发货',
+    ]
+    for (const text of cases) {
+      const png = generate({ data: text, size: 500 }, 'png')
+      expect(scan(png), `回读「${text}」`).toBe(text)
+    }
+  })
+})
+
+describe('非 ASCII 内容编码', () => {
+  /**
+   * 这里断言的是**生成端**的正确性，只是借助 scan 来观测。
+   *
+   * 编码器内部按 Shift_JIS 的首/尾字节区间识别汉字，而 UTF-8 中文的三字节
+   * 序列（1110xxxx 10xxxxxx 10xxxxxx）恰好落进那些区间，于是被误当作 Shift_JIS
+   * 双字节码写进 Kanji 模式分段。Kanji 模式按规范就是 Shift_JIS，任何解码器
+   * 读出来都是乱码 —— 手机扫同样中招，不只是本库的 scan。
+   */
+  it('中文内容往返一致', async () => {
+    const { generateSync: generate, scanSync: scan } = await import('../dist/index.js')
+    for (const text of ['成功', '消息', '复制打开抖音']) {
+      const png = generate({ data: text, size: 400 }, 'png')
+      expect(scan(png)).toBe(text)
+    }
+  })
 })

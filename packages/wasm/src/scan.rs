@@ -25,6 +25,8 @@ pub fn scan_qr(image_bytes: &[u8]) -> Option<String> {
 
     // 优先尝试直接解码全图
     if let Some(r) = try_decode(&gray) { return Some(r); }
+    // 常规检测器失败时，改按「整图即条码」再试一次
+    if let Some(r) = try_decode_pure(&gray) { return Some(r); }
     // 全图多策略预处理后重试
     if let Some(r) = try_all_strategies(&gray) { return Some(r); }
     // 大图启用分块扫描，逐区域检测
@@ -54,13 +56,46 @@ fn to_gray_with_white_bg(img: &DynamicImage) -> GrayImage {
 /// 使用 rxing QRCodeReader 尝试解码灰度图中的 QR 码
 ///
 /// 启用 TryHarder 模式，会花更多时间寻找 QR 码，提高检测率。
+///
+/// 字符集：Byte 分段不带 ECI 时，规范没有约定编码，rxing 会退回 ZXing 的启发式
+/// 猜测（ISO-8859-1 / UTF-8 / Shift_JIS 三选一）。本库生成的一律是 UTF-8，所以
+/// 固定按 UTF-8 解；只有解出替换字符（说明内容确实不是 UTF-8）才退回启发式，
+/// 兼顾按老编码生成的存量二维码。
 fn try_decode(gray: &GrayImage) -> Option<String> {
+    match decode_with(gray, Some("UTF-8"), false) {
+        Some(text) if text.contains('\u{FFFD}') => decode_with(gray, None, false),
+        other => other,
+    }
+}
+
+/// 按「整图即条码」的假设再试一次
+///
+/// rxing 的常规检测器在部分「符号 × 缩放」组合上会推出错误的采样网格，直接以
+/// NotFoundException 失败 —— 但二维码本身是完好的：同样的符号换个尺寸就能过，
+/// jsQR 等其它解码器也能正常读出。PURE_BARCODE 让检测器跳过透视校正、直接按
+/// 定位图案推算模块网格，正好治这一类。
+///
+/// 它假定二维码铺满整图，所以只能作为兜底，不能取代常规路径。
+fn try_decode_pure(gray: &GrayImage) -> Option<String> {
+    match decode_with(gray, Some("UTF-8"), true) {
+        Some(text) if text.contains('\u{FFFD}') => decode_with(gray, None, true),
+        other => other,
+    }
+}
+
+/// 解码一次；`charset` 为 None 时交给 rxing 的启发式猜测，
+/// `pure` 为 true 时启用 PURE_BARCODE 路径
+fn decode_with(gray: &GrayImage, charset: Option<&str>, pure: bool) -> Option<String> {
     let (w, h) = gray.dimensions();
     let data = gray.as_raw().clone();
     let source = Luma8LuminanceSource::new(data, w, h);
     let mut bitmap = BinaryBitmap::new(HybridBinarizer::new(source));
     let mut hints = DecodeHints::default();
     hints.TryHarder = Some(true);
+    hints.PureBarcode = Some(pure);
+    if let Some(name) = charset {
+        hints.CharacterSet = Some(name.to_string());
+    }
     let mut reader = QRCodeReader;
     match reader.decode_with_hints(&mut bitmap, &hints) {
         Ok(result) => {
@@ -112,6 +147,7 @@ fn scan_regions(gray: &GrayImage, width: u32, height: u32) -> Option<String> {
     for (x, y, w, h) in regions {
         let region = extract_region(gray, x, y, w, h);
         if let Some(r) = try_decode(&region) { return Some(r); }
+        if let Some(r) = try_decode_pure(&region) { return Some(r); }
         if let Some(r) = try_all_strategies(&region) { return Some(r); }
     }
     None

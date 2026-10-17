@@ -170,6 +170,19 @@ const img = readFileSync('qrcode.png')
 const content = await scan(img) // 'https://example.com'
 ```
 
+## 性能
+
+二维码生成的耗时几乎全在 WASM 的光栅化与图片编码上，随**像素数**增长：1000×1000 的
+输出约是 300×300 的 10 倍量级，Logo 越大越明显。需要调优时先跑基准：
+
+```bash
+pnpm --filter @ikenxuan/qrcode bench        # 二维码生成场景
+pnpm --filter @ikenxuan/qrcode bench:react  # React 渲染场景
+```
+
+基准只加载 `dist/` 构建产物，所以改完源码要先 `pnpm build:core`。场景设计与结果解读见
+[benchmark/README.md](./benchmark/README.md)。
+
 ## License
 
 MIT

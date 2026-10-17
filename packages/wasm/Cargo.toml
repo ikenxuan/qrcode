@@ -11,14 +11,14 @@ crate-type = ["cdylib"]
 wasm-bindgen = "0.2.122"
 serde = { version = "1.0.228", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
-qr-code-styling = "0.1.1"
-resvg = "0.47.0"
+qr-code-styling = { version = "0.2.4", default-features = false, features = ["png", "jpeg", "webp"] }
+resvg = "0.45.0"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 rxing = { version = "0.9.0", default-features = false, features = ["wasm_support", "encoding_rs", "qrcode", "decoders"] }
 
 [profile.release]
 lto = true
-opt-level = "z"
+opt-level = 3
 strip = true
 codegen-units = 1
 
