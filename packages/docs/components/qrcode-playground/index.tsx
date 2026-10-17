@@ -252,7 +252,13 @@ export const QRCodePlayground = () => {
         </Card>
 
         <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
-          <div className="grid min-w-0 gap-5 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+          {/*
+            右侧预览列自身可滚动（矮视口下仍能看全上传扫码面板），但不要加
+            overscroll-contain：它会在内层滚到边界后继续吞掉滚轮事件，导致鼠标
+            停在预览区时页面（左侧配置）无法继续滚动。保留默认的滚动链后，
+            内层滚到头会自动把滚轮交给页面，也就是让左侧配置继续移动。
+          */}
+          <div className="grid min-w-0 gap-5 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1">
             <PreviewPanel
               byteLength={byteLength}
               copied={copiedCodeKey === selectedSample.key}
