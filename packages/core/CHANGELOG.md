@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/ikenxuan/qrcode/compare/v1.5.0...v1.6.0) (2026-10-17)
+
+
+### ✨ 新功能
+
+* 更新相关项目依赖 ([8e523a2](https://github.com/ikenxuan/qrcode/commit/8e523a2804ee1846b54adf1c8cfef76c0b58a436))
+
 ## [1.5.0](https://github.com/ikenxuan/qrcode/compare/v1.4.0...v1.5.0) (2026-07-10)
 
 
