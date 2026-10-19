@@ -64,6 +64,10 @@ WASM 已内联，import 即用，无需初始化，无需关心 `.wasm` 文件�
 
 返回值：`Promise<string | null>`，解码成功返回 QR 码文本内容，未识别到返回 `null`。
 
+除标准二维码外，`scan` 也会自动识别抖音码
+（`BEF_CODE_TYPE_DY_CODE`）。这类码没有标准 QR 的定位图案，常规解码失败后
+会改走四条数据环的极坐标采样、解扰与 Reed-Solomon 纠错路径，调用方式不变。
+
 ### 同步 API
 
 需要同步调用时使用：

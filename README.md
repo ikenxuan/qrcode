@@ -18,6 +18,7 @@
 ### 扫描
 
 - 支持 PNG、JPEG、WebP 格式图片
+- 支持抖音码（`BEF_CODE_TYPE_DY_CODE`）解码
 - 多区域分块扫描，适用于大图中的小尺寸二维码
 - 多种图像预处理策略（二值化、锐化、对比度增强、反色等）
 - 透明背景图片自动合成白底处理
@@ -63,7 +64,13 @@ pnpm build:wasm
 
 # 构建 core（含测试）
 pnpm build:core
+
+# 构建文档站（静态导出到 packages/docs/out）
+pnpm build:docs
 ```
+
+文档站通过 workspace 引用本地 `@ikenxuan/qrcode`，由 GitHub Actions 自动构建并部署到
+GitHub Pages，详见 [packages/docs/README.md](./packages/docs/README.md)。
 
 ## License
 

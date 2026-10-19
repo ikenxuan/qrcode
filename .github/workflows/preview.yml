@@ -56,6 +56,13 @@ jobs:
       - name: Build core
         run: pnpm build:core
 
+      - name: Build docs
+        if: github.event_name == 'pull_request'
+        env:
+          NEXT_PUBLIC_BASE_PATH: /qrcode
+          NEXT_PUBLIC_SITE_URL: https://ikenxuan.github.io/qrcode
+        run: pnpm --filter docs build
+
       - name: Run tests
         run: pnpm --filter @ikenxuan/qrcode test
 

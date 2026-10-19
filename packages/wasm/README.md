@@ -6,6 +6,7 @@
 
 - [qr-code-styling](https://crates.io/crates/qr-code-styling) — QR 码生成与样式化
 - [rxing](https://crates.io/crates/rxing) — QR 码扫描与解码（ZXing 的 Rust 移植）
+- `src/dy/` — 抖音码的环采样、解扰与 Reed-Solomon 解码
 - [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) — Rust ↔ JS 类型桥接
 - [wasm-pack](https://rustwasm.github.io/wasm-pack/) — 构建工具链
 - [resvg](https://github.com/nickel-org/resvg) — SVG 光栅化（透明背景渲染）

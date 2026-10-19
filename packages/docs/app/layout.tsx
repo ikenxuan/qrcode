@@ -3,6 +3,7 @@ import './global.css';
 import localFont from 'next/font/local';
 import type { Metadata } from 'next';
 import { ToastProvider } from '@/components/toast-provider';
+import { metadataBaseUrl, withBasePath } from '@/lib/shared';
 
 // 自托管 Inter：next/font/google 在构建/dev 时需要访问 fonts.gstatic.com，
 // 该域名在部分网络环境下不可达，会让 Turbopack 直接报
@@ -15,14 +16,19 @@ const inter = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://github.com/ikenxuan/qrcode'),
+  metadataBase: new URL(metadataBaseUrl),
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="zh-CN" className={inter.className} suppressHydrationWarning>
       <body className="flex min-h-screen flex-col overflow-x-clip bg-background text-foreground">
-        <RootProvider>
+        <RootProvider
+          search={{
+            // 静态导出没有服务端 API，搜索索引在构建期生成并作为静态文件提供。
+            options: { type: 'static', api: withBasePath('/api/search') },
+          }}
+        >
           {children}
           <ToastProvider />
         </RootProvider>

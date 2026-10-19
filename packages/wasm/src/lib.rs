@@ -10,6 +10,7 @@ use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 mod color;
+mod dy;
 mod logo;
 mod scan;
 use color::parse_color;

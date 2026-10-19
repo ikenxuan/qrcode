@@ -27,6 +27,8 @@ pub fn scan_qr(image_bytes: &[u8]) -> Option<String> {
     if let Some(r) = try_decode(&gray) { return Some(r); }
     // 常规检测器失败时，改按「整图即条码」再试一次
     if let Some(r) = try_decode_pure(&gray) { return Some(r); }
+    // 抖音码没有标准 QR 定位图案，走独立的环采样解码
+    if let Some(r) = crate::dy::decode_gray(&gray) { return Some(r); }
     // 全图多策略预处理后重试
     if let Some(r) = try_all_strategies(&gray) { return Some(r); }
     // 大图启用分块扫描，逐区域检测
