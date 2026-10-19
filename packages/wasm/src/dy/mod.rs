@@ -10,4 +10,4 @@ mod detect;
 mod gf256;
 mod layout;
 
-pub use decoder::decode_gray;
+pub use decoder::decode_gray_detailed;

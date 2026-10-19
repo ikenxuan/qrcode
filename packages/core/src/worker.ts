@@ -1,5 +1,5 @@
 import { parentPort } from 'node:worker_threads'
-import { generateSync, generateSvgSync, scanSync } from './sync.js'
+import { generateSync, generateSvgSync, scanSync, scanDetailedSync } from './sync.js'
 import type { Encoding, OutputFormat, QRCodeOptions } from './types.js'
 
 type WorkerRequest =
@@ -15,6 +15,10 @@ type WorkerRequest =
   }
   | {
     method: 'scan'
+    imageData: Uint8Array
+  }
+  | {
+    method: 'scanDetailed'
     imageData: Uint8Array
   }
 
@@ -54,6 +58,12 @@ parentPort?.on('message', (request: WorkerRequest) => {
         parentPort?.postMessage({
           ok: true,
           value: scanSync(request.imageData),
+        })
+        break
+      case 'scanDetailed':
+        parentPort?.postMessage({
+          ok: true,
+          value: scanDetailedSync(request.imageData),
         })
         break
     }

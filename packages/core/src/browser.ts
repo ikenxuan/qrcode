@@ -6,11 +6,11 @@
  *
  * @packageDocumentation
  */
-import { DotType, CornerSquareType, CornerDotType, ShapeType, OutputFormat, type QRCodeOptions, type Encoding, type GenerateResult, type Gradient, type DotsOptions, type CornersSquareOptions, type CornersDotOptions, type ImageOptions, type BackgroundOptions } from './types.js'
+import { DotType, CornerSquareType, CornerDotType, ShapeType, OutputFormat, type QRCodeOptions, type Encoding, type GenerateResult, type Gradient, type DotsOptions, type CornersSquareOptions, type CornersDotOptions, type ImageOptions, type BackgroundOptions, type ScanDetails } from './types.js'
 
 export { DotType, CornerSquareType, CornerDotType, ShapeType, OutputFormat }
-export { generateSync, generateSvgSync, scanSync } from './sync.js'
-export type { Gradient, DotsOptions, CornersSquareOptions, CornersDotOptions, ImageOptions, BackgroundOptions, QRCodeOptions, Encoding, GenerateResult }
+export { generateSync, generateSvgSync, scanSync, scanDetailedSync } from './sync.js'
+export type { Gradient, DotsOptions, CornersSquareOptions, CornersDotOptions, ImageOptions, BackgroundOptions, QRCodeOptions, Encoding, GenerateResult, ScanPoint, ScanCircle, ScanDetails } from './types.js'
 
 type BrowserWorkerRequest =
   | {
@@ -25,6 +25,10 @@ type BrowserWorkerRequest =
   }
   | {
     method: 'scan'
+    imageData: Uint8Array
+  }
+  | {
+    method: 'scanDetailed'
     imageData: Uint8Array
   }
 
@@ -243,4 +247,19 @@ export const generateSvg = async (options: QRCodeOptions): Promise<string> => {
  */
 export const scan = async (imageData: Uint8Array): Promise<string | null> => {
   return await runInBrowserWorker<string | null>({ method: 'scan', imageData })
+}
+
+/**
+ * 在浏览器中异步扫描图片中的二维码，并返回位置信息。
+ *
+ * @remarks
+ * 与 {@link scan} 使用相同的解码流程，额外返回标准二维码的三个定位
+ * 图案中心或抖音码的圆心/半径，坐标均为原图像素坐标。解码在浏览器
+ * Web Worker 中执行。
+ *
+ * @param imageData - 图片文件的二进制数据。
+ * @returns Promise，resolve 后返回文本与位置信息，未识别到则返回 `null`。
+ */
+export const scanDetailed = async (imageData: Uint8Array): Promise<ScanDetails | null> => {
+  return await runInBrowserWorker<ScanDetails | null>({ method: 'scanDetailed', imageData })
 }

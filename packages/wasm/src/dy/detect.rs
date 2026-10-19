@@ -27,6 +27,10 @@ pub struct Locator {
     pub scale_base: f64,
     pub span: f64,
     pub steps: usize,
+    /// 该定位器对应的定位点（原图坐标）。
+    ///
+    /// 作品分享码只有中心圆盘这一个锚点；名片码是三个圆形定位标记的中心。
+    pub points: Vec<(f64, f64)>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -184,6 +188,8 @@ struct FinderCandidate {
 pub struct FinderResult {
     pub center: (f64, f64),
     pub distance: f64,
+    /// 三个圆形定位标记的中心（原图坐标）。
+    pub points: [(f64, f64); 3],
 }
 
 /// 找到名片码的三个圆形定位标记，返回外心与平均距离。
@@ -238,7 +244,7 @@ pub fn find_finders(
     });
 
     let top = &candidates[..candidates.len().min(8)];
-    let mut best: Option<(u64, (f64, f64), f64)> = None;
+    let mut best: Option<(u64, (f64, f64), f64, [(f64, f64); 3])> = None;
 
     for i in 0..top.len() {
         for j in (i + 1)..top.len() {
@@ -282,14 +288,18 @@ pub fn find_finders(
                 let score = trio.iter().map(|item| item.area).sum::<u64>();
                 if best.as_ref().is_none_or(|current| score > current.0) {
                     let distance = trio.iter().map(|item| item.dist).sum::<f64>() / 3.0;
-                    best = Some((score, cc, distance));
+                    best = Some((score, cc, distance, points));
                 }
             }
         }
     }
 
-    let (_, center, distance) = best?;
-    Some(FinderResult { center, distance })
+    let (_, center, distance, points) = best?;
+    Some(FinderResult {
+        center,
+        distance,
+        points,
+    })
 }
 
 /// 以 `base` 为中心、`+/- span` 为范围生成一组尺度因子。
@@ -305,9 +315,56 @@ pub fn scale_grid(base: f64, steps: usize, span: f64) -> Vec<f64> {
         .collect()
 }
 
+/// 收集图中所有近似实心圆形的暗色连通域，按圆度排序。
+///
+/// 作品分享码的中心圆盘在整张截图里往往不是最大的暗色块（深色弹窗、
+/// 视频画面都可能更大），因此不能只取最大连通域。这里按“接近圆盘”
+/// 的形状筛选：外接框近似正方形、填充率接近 π/4，再用填充率和长宽比
+/// 给圆度打分。
+fn dark_disk_candidates(gray: &GrayImage) -> Vec<ComponentStats> {
+    const MAX_CANDIDATES: usize = 8;
+    const MIN_SIDE: i64 = 16;
+
+    let (width, height) = gray.dimensions();
+    let dark = threshold_mask(gray, |value| value < 128);
+    let stats = connected_components(&dark, width as usize, height as usize);
+    let mut scored: Vec<(f64, ComponentStats)> = Vec::new();
+
+    for stat in stats.iter().skip(1) {
+        if stat.width < MIN_SIDE || stat.height < MIN_SIDE {
+            continue;
+        }
+        if stat.x <= 1
+            || stat.y <= 1
+            || stat.x + stat.width >= width as i64 - 1
+            || stat.y + stat.height >= height as i64 - 1
+        {
+            continue;
+        }
+        let aspect = stat.width as f64 / stat.height as f64;
+        if !(0.75..=1.33).contains(&aspect) {
+            continue;
+        }
+        let fill = stat.area as f64 / (stat.width * stat.height) as f64;
+        if !(0.55..=0.9).contains(&fill) {
+            continue;
+        }
+        let score = (fill - std::f64::consts::FRAC_PI_4).abs() + (aspect - 1.0).abs() * 0.5;
+        scored.push((score, *stat));
+    }
+
+    scored.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(Ordering::Equal));
+    scored
+        .into_iter()
+        .take(MAX_CANDIDATES)
+        .map(|(_, stat)| stat)
+        .collect()
+}
+
 /// 返回中心/尺度假设，按可信度从高到低排列。
 ///
 /// - 实心暗盘（作品分享码）；
+/// - 图中其他近似圆形的暗色块（暗盘不是最大暗块时的兜底）；
 /// - 白色名片上的三个定位标记（名片码）；
 /// - 白色圆盘质心加校准半径（兜底方案）。
 pub fn locator_candidates(gray: &GrayImage) -> Vec<Locator> {
@@ -315,13 +372,34 @@ pub fn locator_candidates(gray: &GrayImage) -> Vec<Locator> {
     let mut locators = Vec::new();
 
     let dark = threshold_mask(gray, |value| value < 128);
-    if let Some(found) = largest_non_border_component(&dark, width as usize, height as usize) {
+    let largest = largest_non_border_component(&dark, width as usize, height as usize);
+    if let Some(found) = largest {
         let radius = (found.width + found.height) as f64 / 4.0;
         locators.push(Locator {
             center: (found.cx, found.cy),
             scale_base: radius / DISK_RADIUS,
             span: 0.03,
             steps: 13,
+            points: vec![(found.cx, found.cy)],
+        });
+    }
+
+    for disk in dark_disk_candidates(gray) {
+        // 与最大暗块重复的候选跳过。
+        if largest.is_some_and(|found| {
+            (found.cx - disk.cx).hypot(found.cy - disk.cy) < 2.0
+                && (found.width - disk.width).abs() <= 2
+                && (found.height - disk.height).abs() <= 2
+        }) {
+            continue;
+        }
+        let radius = (disk.width + disk.height) as f64 / 4.0;
+        locators.push(Locator {
+            center: (disk.cx, disk.cy),
+            scale_base: radius / DISK_RADIUS,
+            span: 0.04,
+            steps: 9,
+            points: vec![(disk.cx, disk.cy)],
         });
     }
 
@@ -332,6 +410,7 @@ pub fn locator_candidates(gray: &GrayImage) -> Vec<Locator> {
                 scale_base: finders.distance / FINDER_DISTANCE,
                 span: 0.05,
                 steps: 21,
+                points: finders.points.to_vec(),
             });
         }
         locators.push(Locator {
@@ -339,6 +418,7 @@ pub fn locator_candidates(gray: &GrayImage) -> Vec<Locator> {
             scale_base: bright_radius / BRIGHT_DISK_RADIUS,
             span: 0.05,
             steps: 21,
+            points: vec![(bx, by)],
         });
     }
 

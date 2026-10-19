@@ -12,11 +12,11 @@
 
 use image::GrayImage;
 
-use super::detect::{locator_candidates, sample_rings, scale_grid};
+use super::detect::{locator_candidates, sample_rings, scale_grid, Locator};
 use super::gf256::rs_correct;
 use super::layout::{
     decode_field18, decode_format, descriptor_total, layout_data, mask_predicate, rs_layouts,
-    scrambled_positions, RING_MODULES, RSDescriptor,
+    scrambled_positions, RING_MODULES, RING_RADII, RSDescriptor,
 };
 
 /// 把采样得到的环旋转/翻转到解码方向。
@@ -258,45 +258,206 @@ fn decode_candidate(candidate: &RingCandidate) -> Option<CandidateDecode> {
     None
 }
 
-/// 从灰度图中解码抖音码，返回文本。
+/// 抖音码的解码结果与位置。
+pub struct DyDecode {
+    pub text: String,
+    /// 码心在原图中的坐标。
+    pub center: (f64, f64),
+    /// 覆盖四条数据环的半径（含少量留白）。
+    pub radius: f64,
+    /// 定位点（原图坐标）。
+    ///
+    /// 作品分享码是中心圆盘的圆心；名片码是三个圆形定位标记的中心。
+    pub points: Vec<(f64, f64)>,
+}
+
+/// 从灰度图中解码抖音码，返回文本与位置。
 ///
 /// 没有任何候选可解时返回 `None`。完整的 120 × 2 方向搜索保证解码不依赖
 /// 图片拍摄角度；每个定位器保留纠错数最少的候选，零错误时立即返回。
-pub fn decode_gray(gray: &GrayImage) -> Option<String> {
+///
+/// 小尺寸图片的模块只有两三个像素，固定像素的环采样容易失败，因此会先
+/// 放大图片再解码（2x，必要时 4x），最后把位置换算回原图坐标。
+pub fn decode_gray_detailed(gray: &GrayImage) -> Option<DyDecode> {
+    let (width, height) = gray.dimensions();
+    let min_side = width.min(height);
+
+    // 很小的图直接先放大，避免在低分辨率上做无效搜索。
+    if min_side < 320 {
+        if let Some(decoded) = decode_gray_upscaled(gray, 2) {
+            return Some(decoded);
+        }
+        if let Some(decoded) = decode_gray_upscaled(gray, 4) {
+            return Some(decoded);
+        }
+    }
+
+    if let Some(decoded) = decode_gray_impl(gray) {
+        return Some(decoded);
+    }
+
+    // 中等尺寸也可能因为模块偏小而失败，放大后重试。
+    if min_side < 640 {
+        if let Some(decoded) = decode_gray_upscaled(gray, 2) {
+            return Some(decoded);
+        }
+        if let Some(decoded) = decode_gray_upscaled(gray, 4) {
+            return Some(decoded);
+        }
+    }
+
+    None
+}
+
+/// 放大图片后解码，并把圆心/半径换算回原图坐标。
+fn decode_gray_upscaled(gray: &GrayImage, factor: u32) -> Option<DyDecode> {
+    let upscaled = image::imageops::resize(
+        gray,
+        gray.width() * factor,
+        gray.height() * factor,
+        image::imageops::FilterType::Lanczos3,
+    );
+    let mut decoded = decode_gray_impl(&upscaled)?;
+    let factor = factor as f64;
+    decoded.center = (decoded.center.0 / factor, decoded.center.1 / factor);
+    decoded.radius /= factor;
+    decoded.points = decoded
+        .points
+        .iter()
+        .map(|&(x, y)| (x / factor, y / factor))
+        .collect();
+    Some(decoded)
+}
+
+fn decode_gray_impl(gray: &GrayImage) -> Option<DyDecode> {
     let locators = locator_candidates(gray);
     if locators.is_empty() {
         return None;
     }
 
     for locator in locators {
-        let mut best: Option<(usize, String)> = None;
+        let scales = scale_grid(locator.scale_base, locator.steps, locator.span);
+        let (hit, best) = search_scales(gray, locator.center, &scales);
 
-        for scale in scale_grid(locator.scale_base, locator.steps, locator.span) {
-            let rings = sample_rings(gray, locator.center.0, locator.center.1, scale);
-            for reverse in [false, true] {
-                for rotation in 0..RING_MODULES {
-                    let oriented = reindex_rings(&rings, rotation, reverse);
-                    let Some(candidate) = decode_rings(&oriented) else {
-                        continue;
-                    };
-                    let Some(decoded) = decode_candidate(&candidate) else {
-                        continue;
-                    };
-                    if decoded.errors == 0 {
-                        return Some(decoded.text);
-                    }
-                    if best
-                        .as_ref()
-                        .is_none_or(|(errors, _)| decoded.errors < *errors)
-                    {
-                        best = Some((decoded.errors, decoded.text));
-                    }
+        if let Some((text, scale)) = hit {
+            return Some(DyDecode {
+                text,
+                center: locator.center,
+                radius: RING_RADII[0] * scale * 1.08,
+                points: locator.points.clone(),
+            });
+        }
+
+        // 原尺寸下模块可能只有两三个像素，采样容易错位。放大码所在区域
+        // 再搜索一次，比放大整张截图便宜得多。
+        if let Some((text, scale)) = search_locator_upscaled(gray, &locator) {
+            return Some(DyDecode {
+                text,
+                center: locator.center,
+                radius: RING_RADII[0] * scale * 1.08,
+                points: locator.points.clone(),
+            });
+        }
+
+        if let Some((_, text, scale)) = best {
+            return Some(DyDecode {
+                text,
+                center: locator.center,
+                radius: RING_RADII[0] * scale * 1.08,
+                points: locator.points.clone(),
+            });
+        }
+    }
+
+    None
+}
+
+/// 在一组尺度上搜索：返回零错误命中，以及纠错数最少的候选。
+fn search_scales(
+    gray: &GrayImage,
+    center: (f64, f64),
+    scales: &[f64],
+) -> (Option<(String, f64)>, Option<(usize, String, f64)>) {
+    let mut best: Option<(usize, String, f64)> = None;
+
+    for &scale in scales {
+        let rings = sample_rings(gray, center.0, center.1, scale);
+        for reverse in [false, true] {
+            for rotation in 0..RING_MODULES {
+                let oriented = reindex_rings(&rings, rotation, reverse);
+                let Some(candidate) = decode_rings(&oriented) else {
+                    continue;
+                };
+                let Some(decoded) = decode_candidate(&candidate) else {
+                    continue;
+                };
+                if decoded.errors == 0 {
+                    return (Some((decoded.text, scale)), best);
+                }
+                if best
+                    .as_ref()
+                    .is_none_or(|(errors, _, _)| decoded.errors < *errors)
+                {
+                    best = Some((decoded.errors, decoded.text, scale));
                 }
             }
         }
+    }
 
-        if let Some((_, text)) = best {
-            return Some(text);
+    (None, best)
+}
+
+/// 放大码心附近的区域后重新搜索。
+///
+/// 只截取环覆盖范围（含留白），因此即使整张截图很大，代价也只跟码的
+/// 像素尺寸有关。估计尺寸已经很大的码不需要放大，直接跳过。
+fn search_locator_upscaled(
+    gray: &GrayImage,
+    locator: &Locator,
+) -> Option<(String, f64)> {
+    const MAX_REGION_SIDE: f64 = 640.0;
+
+    let margin = RING_RADII[0] * locator.scale_base * (1.0 + locator.span) * 1.2;
+    let side = margin * 2.0;
+    if !(32.0..=MAX_REGION_SIDE).contains(&side) {
+        return None;
+    }
+
+    let (width, height) = gray.dimensions();
+    let left = (locator.center.0 - margin).floor().max(0.0);
+    let top = (locator.center.1 - margin).floor().max(0.0);
+    let right = (locator.center.0 + margin).ceil().min(width as f64);
+    let bottom = (locator.center.1 + margin).ceil().min(height as f64);
+    if right - left < 24.0 || bottom - top < 24.0 {
+        return None;
+    }
+
+    let crop = image::imageops::crop_imm(
+        gray,
+        left as u32,
+        top as u32,
+        (right - left) as u32,
+        (bottom - top) as u32,
+    )
+    .to_image();
+
+    for factor in [2u32, 4u32] {
+        let upscaled = image::imageops::resize(
+            &crop,
+            crop.width() * factor,
+            crop.height() * factor,
+            image::imageops::FilterType::Lanczos3,
+        );
+        let center = (
+            (locator.center.0 - left) * factor as f64,
+            (locator.center.1 - top) * factor as f64,
+        );
+        // 放大后模块更清晰，用更细的尺度网格提高命中率。
+        let steps = locator.steps.max(17);
+        let scales = scale_grid(locator.scale_base * factor as f64, steps, locator.span);
+        let (hit, _) = search_scales(&upscaled, center, &scales);
+        if let Some((text, scale)) = hit {
+            return Some((text, scale / factor as f64));
         }
     }
 

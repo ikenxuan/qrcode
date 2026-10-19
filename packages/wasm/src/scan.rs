@@ -7,9 +7,94 @@
 use image::{DynamicImage, GrayImage, Luma};
 use rxing::{
     common::HybridBinarizer, BinaryBitmap, DecodeHints,
-    Luma8LuminanceSource, Reader,
+    Luma8LuminanceSource, Point, Reader,
 };
 use rxing::qrcode::QRCodeReader;
+use serde::Serialize;
+
+/// 图片坐标系中的一个定位点。
+#[derive(Serialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanPoint {
+    pub x: f32,
+    pub y: f32,
+}
+
+/// 抖音码等圆形码的位置。
+#[derive(Serialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanCircle {
+    pub cx: f32,
+    pub cy: f32,
+    pub r: f32,
+}
+
+/// 一次成功扫描的结果，包含文本和原图坐标下的位置。
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanOutcome {
+    pub text: String,
+    pub width: u32,
+    pub height: u32,
+    /// 定位点（原图坐标）。标准二维码是三个定位图案中心，可能附带对齐图案
+    /// 中心；抖音码作品分享码是中心圆盘圆心，名片码是三个圆形定位标记中心。
+    pub points: Vec<ScanPoint>,
+    /// 抖音码的圆形范围；标准二维码为空。
+    pub circle: Option<ScanCircle>,
+}
+
+/// 内部解码结果，位置信息可能来自 rxing 定位点或抖音码检测器。
+struct LocatedText {
+    text: String,
+    points: Vec<ScanPoint>,
+    circle: Option<ScanCircle>,
+}
+
+impl LocatedText {
+    fn from_points(text: String, points: &[Point]) -> Self {
+        Self {
+            text,
+            points: points
+                .iter()
+                .map(|point| ScanPoint { x: point.x, y: point.y })
+                .collect(),
+            circle: None,
+        }
+    }
+
+    fn offset(&mut self, dx: u32, dy: u32) {
+        for point in &mut self.points {
+            point.x += dx as f32;
+            point.y += dy as f32;
+        }
+        if let Some(circle) = &mut self.circle {
+            circle.cx += dx as f32;
+            circle.cy += dy as f32;
+        }
+    }
+}
+
+/// 扫描图片中的 QR 码，返回文本与位置信息
+///
+/// # Arguments
+/// * `image_bytes` - 图片文件的原始字节（PNG/JPEG/WebP）
+///
+/// # Returns
+/// 解码成功返回文本、图片尺寸和原图坐标下的位置，否则返回 None
+pub fn scan_qr_detailed(image_bytes: &[u8]) -> Option<ScanOutcome> {
+    let img = image::load_from_memory(image_bytes).ok()?;
+    let gray = to_gray_with_white_bg(&img);
+    let (width, height) = gray.dimensions();
+    let found = scan_gray_detailed(&gray)?;
+
+    Some(ScanOutcome {
+        text: found.text,
+        width,
+        height,
+        points: found.points,
+        circle: found.circle,
+    })
+}
 
 /// 扫描图片中的 QR 码
 ///
@@ -19,21 +104,40 @@ use rxing::qrcode::QRCodeReader;
 /// # Returns
 /// 解码成功返回 QR 码文本内容，否则返回 None
 pub fn scan_qr(image_bytes: &[u8]) -> Option<String> {
-    let img = image::load_from_memory(image_bytes).ok()?;
-    let gray = to_gray_with_white_bg(&img);
+    scan_qr_detailed(image_bytes).map(|outcome| outcome.text)
+}
+
+fn scan_gray_detailed(gray: &GrayImage) -> Option<LocatedText> {
     let (width, height) = gray.dimensions();
 
     // 优先尝试直接解码全图
-    if let Some(r) = try_decode(&gray) { return Some(r); }
+    if let Some(r) = try_decode(gray) { return Some(r); }
     // 常规检测器失败时，改按「整图即条码」再试一次
-    if let Some(r) = try_decode_pure(&gray) { return Some(r); }
-    // 抖音码没有标准 QR 定位图案，走独立的环采样解码
-    if let Some(r) = crate::dy::decode_gray(&gray) { return Some(r); }
+    if let Some(r) = try_decode_pure(gray) { return Some(r); }
+    // 抖音码没有标准 QR 的定位图案，走独立的环采样解码
+    if let Some(r) = crate::dy::decode_gray_detailed(gray) {
+        return Some(LocatedText {
+            text: r.text,
+            points: r
+                .points
+                .iter()
+                .map(|&(x, y)| ScanPoint {
+                    x: x as f32,
+                    y: y as f32,
+                })
+                .collect(),
+            circle: Some(ScanCircle {
+                cx: r.center.0 as f32,
+                cy: r.center.1 as f32,
+                r: r.radius as f32,
+            }),
+        });
+    }
     // 全图多策略预处理后重试
-    if let Some(r) = try_all_strategies(&gray) { return Some(r); }
+    if let Some(r) = try_all_strategies(gray) { return Some(r); }
     // 大图启用分块扫描，逐区域检测
     if width > 1024 || height > 1024 {
-        return scan_regions(&gray, width, height);
+        return scan_regions(gray, width, height);
     }
     None
 }
@@ -63,9 +167,9 @@ fn to_gray_with_white_bg(img: &DynamicImage) -> GrayImage {
 /// 猜测（ISO-8859-1 / UTF-8 / Shift_JIS 三选一）。本库生成的一律是 UTF-8，所以
 /// 固定按 UTF-8 解；只有解出替换字符（说明内容确实不是 UTF-8）才退回启发式，
 /// 兼顾按老编码生成的存量二维码。
-fn try_decode(gray: &GrayImage) -> Option<String> {
+fn try_decode(gray: &GrayImage) -> Option<LocatedText> {
     match decode_with(gray, Some("UTF-8"), false) {
-        Some(text) if text.contains('\u{FFFD}') => decode_with(gray, None, false),
+        Some(text) if text.text.contains('\u{FFFD}') => decode_with(gray, None, false),
         other => other,
     }
 }
@@ -78,16 +182,16 @@ fn try_decode(gray: &GrayImage) -> Option<String> {
 /// 定位图案推算模块网格，正好治这一类。
 ///
 /// 它假定二维码铺满整图，所以只能作为兜底，不能取代常规路径。
-fn try_decode_pure(gray: &GrayImage) -> Option<String> {
+fn try_decode_pure(gray: &GrayImage) -> Option<LocatedText> {
     match decode_with(gray, Some("UTF-8"), true) {
-        Some(text) if text.contains('\u{FFFD}') => decode_with(gray, None, true),
+        Some(text) if text.text.contains('\u{FFFD}') => decode_with(gray, None, true),
         other => other,
     }
 }
 
 /// 解码一次；`charset` 为 None 时交给 rxing 的启发式猜测，
 /// `pure` 为 true 时启用 PURE_BARCODE 路径
-fn decode_with(gray: &GrayImage, charset: Option<&str>, pure: bool) -> Option<String> {
+fn decode_with(gray: &GrayImage, charset: Option<&str>, pure: bool) -> Option<LocatedText> {
     let (w, h) = gray.dimensions();
     let data = gray.as_raw().clone();
     let source = Luma8LuminanceSource::new(data, w, h);
@@ -102,7 +206,11 @@ fn decode_with(gray: &GrayImage, charset: Option<&str>, pure: bool) -> Option<St
     match reader.decode_with_hints(&mut bitmap, &hints) {
         Ok(result) => {
             let text = result.getText().to_string();
-            if text.is_empty() { None } else { Some(text) }
+            if text.is_empty() {
+                None
+            } else {
+                Some(LocatedText::from_points(text, result.getPoints()))
+            }
         }
         Err(_) => None,
     }
@@ -117,7 +225,7 @@ fn decode_with(gray: &GrayImage, charset: Option<&str>, pure: bool) -> Option<St
 /// - 组合策略：增强+二值化、锐化+二值化
 /// - 反色：处理白色 QR 码在深色背景上的情况
 /// - 二值化+反色：综合处理
-fn try_all_strategies(gray: &GrayImage) -> Option<String> {
+fn try_all_strategies(gray: &GrayImage) -> Option<LocatedText> {
     let bin = binarize_otsu(gray);
     if let Some(r) = try_decode(&bin) { return Some(r); }
     let sharp = sharpen(gray);
@@ -140,7 +248,7 @@ fn try_all_strategies(gray: &GrayImage) -> Option<String> {
 /// 对大图进行分块，在每个区域内独立执行完整的检测流程。
 /// 区域覆盖四角、边缘中点和中心，使用小/中/大三种块尺寸，
 /// 确保不同位置和大小的 QR 码都能被检测到。
-fn scan_regions(gray: &GrayImage, width: u32, height: u32) -> Option<String> {
+fn scan_regions(gray: &GrayImage, width: u32, height: u32) -> Option<LocatedText> {
     let small = 400.min((width.min(height) as f64 * 0.3) as u32);
     let medium = 600.min((width.min(height) as f64 * 0.5) as u32);
     let large = 800.min((width.max(height) as f64 * 0.6) as u32);
@@ -148,9 +256,13 @@ fn scan_regions(gray: &GrayImage, width: u32, height: u32) -> Option<String> {
 
     for (x, y, w, h) in regions {
         let region = extract_region(gray, x, y, w, h);
-        if let Some(r) = try_decode(&region) { return Some(r); }
-        if let Some(r) = try_decode_pure(&region) { return Some(r); }
-        if let Some(r) = try_all_strategies(&region) { return Some(r); }
+        let mut found = try_decode(&region);
+        if found.is_none() { found = try_decode_pure(&region); }
+        if found.is_none() { found = try_all_strategies(&region); }
+        if let Some(mut found) = found {
+            found.offset(x, y);
+            return Some(found);
+        }
     }
     None
 }

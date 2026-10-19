@@ -1,4 +1,4 @@
-import { generateSync, generateSvgSync, scanSync } from './sync.js'
+import { generateSync, generateSvgSync, scanSync, scanDetailedSync } from './sync.js'
 import type { Encoding, OutputFormat, QRCodeOptions } from './types.js'
 
 type BrowserWorkerRequest =
@@ -17,6 +17,11 @@ type BrowserWorkerRequest =
   | {
     id: number
     method: 'scan'
+    imageData: Uint8Array
+  }
+  | {
+    id: number
+    method: 'scanDetailed'
     imageData: Uint8Array
   }
 
@@ -74,6 +79,9 @@ workerScope.addEventListener('message', (event) => {
         break
       case 'scan':
         postSuccess(request.id, scanSync(request.imageData))
+        break
+      case 'scanDetailed':
+        postSuccess(request.id, scanDetailedSync(request.imageData))
         break
     }
   } catch (error) {

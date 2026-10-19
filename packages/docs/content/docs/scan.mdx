@@ -33,6 +33,25 @@ const image = readFileSync('douyin-code.png');
 const text = await scan(image); // 'https://v.douyin.com/...'
 ```
 
+## 获取二维码位置
+
+需要把识别结果标在原图上时，使用 `scanDetailed(imageData)`。它返回文本、
+原图尺寸和位置信息：
+
+```ts twoslash title="scan-detailed.ts"
+// @types: node
+import { readFileSync } from 'node:fs';
+import { scanDetailed } from '@ikenxuan/qrcode';
+
+const image = readFileSync('qrcode.png');
+const result = await scanDetailed(image);
+// result?.points：定位点（标准二维码为定位图案中心；抖音码为圆心或三个圆形标记中心）
+// result?.circle：抖音码的圆心与半径
+```
+
+坐标均为原图像素坐标。同步版本为 `scanDetailedSync`，
+`@ikenxuan/qrcode/browser` 入口也导出同名方法。
+
 ## 扫描生成结果
 
 ```ts twoslash title="scan-generated.ts"

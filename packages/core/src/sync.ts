@@ -1,5 +1,5 @@
-import { generate as _generate, generateSvg as _generateSvg, scan as _scan } from '@ikenxuan/qrcode-wasm'
-import type { Encoding, GenerateResult, OutputFormat, QRCodeOptions } from './types.js'
+import { generate as _generate, generateSvg as _generateSvg, scan as _scan, scanDetailed as _scanDetailed } from '@ikenxuan/qrcode-wasm'
+import type { Encoding, GenerateResult, OutputFormat, QRCodeOptions, ScanDetails } from './types.js'
 
 const toBase64 = (buf: Uint8Array<ArrayBuffer>): string => {
   let binary = ''
@@ -63,4 +63,26 @@ export const generateSvgSync = (options: QRCodeOptions): string => {
  */
 export const scanSync = (imageData: Uint8Array): string | null => {
   return _scan(imageData) ?? null
+}
+
+/**
+ * 同步扫描图片中的二维码，并返回位置信息。
+ *
+ * @remarks
+ * 与 {@link scanSync} 使用相同的解码流程，额外返回标准二维码的三个定位
+ * 图案中心或抖音码的圆心/半径，坐标均为原图像素坐标。
+ *
+ * @param imageData - 图片文件的二进制数据。
+ * @returns 文本与位置信息，未识别到则返回 `null`。
+ */
+export const scanDetailedSync = (imageData: Uint8Array): ScanDetails | null => {
+  const details = _scanDetailed(imageData) as ScanDetails | undefined
+  if (!details) return null
+
+  // serde 会把 Option::None 序列化成 undefined，这里统一成 null 方便调用方判断。
+  return {
+    ...details,
+    points: details.points ?? [],
+    circle: details.circle ?? null,
+  }
 }

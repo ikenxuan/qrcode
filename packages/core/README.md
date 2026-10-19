@@ -68,6 +68,25 @@ WASM 已内联，import 即用，无需初始化，无需关心 `.wasm` 文件�
 （`BEF_CODE_TYPE_DY_CODE`）。这类码没有标准 QR 的定位图案，常规解码失败后
 会改走四条数据环的极坐标采样、解扰与 Reed-Solomon 纠错路径，调用方式不变。
 
+### `scanDetailed(imageData)`
+
+异步扫描并返回文本与位置信息，返回 `Promise<ScanDetails | null>`：
+
+```ts
+interface ScanDetails {
+  text: string
+  width: number
+  height: number
+  /** 定位点：标准二维码为定位图案中心；抖音码为圆心或三个圆形标记中心 */
+  points: ScanPoint[]
+  /** 抖音码的圆心与半径；标准二维码为 null */
+  circle: ScanCircle | null
+}
+```
+
+坐标均为原图像素坐标。同步版本为 `scanDetailedSync(imageData)`，
+`@ikenxuan/qrcode/browser` 入口也导出同名方法。
+
 ### 同步 API
 
 需要同步调用时使用：
@@ -75,6 +94,7 @@ WASM 已内联，import 即用，无需初始化，无需关心 `.wasm` 文件�
 - `generateSync(options, format, encoding?)`
 - `generateSvgSync(options)`
 - `scanSync(imageData)`
+- `scanDetailedSync(imageData)`
 
 ### 浏览器入口
 

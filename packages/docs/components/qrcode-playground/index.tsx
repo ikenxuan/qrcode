@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, toast } from '@heroui/react';
+import { createAnnotatedImage } from './annotate';
 import { buildCodeSamples } from './code-samples';
 import { defaultPlaygroundState, fileExtensions, mimeTypes } from './constants';
 import { HomeHero } from './home-hero';
@@ -9,7 +10,7 @@ import { buildQRCodeOptions } from './options';
 import { PlaygroundControls } from './playground-controls';
 import { CodeSamplePanel } from './code-sample-panel';
 import { PreviewPanel, UploadScanPanel } from './preview-panels';
-import type { CodeSample, CodeSampleKey, LogoState, QRCodeModule } from './types';
+import type { CodeSample, CodeSampleKey, LogoState, QRCodeModule, ScanDetails } from './types';
 import { base64ByteLength, revokeObjectUrl } from './utils';
 
 export { HomeHero };
@@ -18,6 +19,7 @@ export const QRCodePlayground = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef('');
+  const uploadPreviewUrlRef = useRef('');
   const renderVersionRef = useRef(0);
   const hasRenderedOnceRef = useRef(false);
   const currentScanVersionRef = useRef(0);
@@ -31,6 +33,8 @@ export const QRCodePlayground = () => {
   const [error, setError] = useState('');
   const [scanResult, setScanResult] = useState('尚未扫描');
   const [uploadResult, setUploadResult] = useState('等待上传图片');
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState('');
+  const [uploadDetails, setUploadDetails] = useState<ScanDetails | null>(null);
   const [selectedCodeKey, setSelectedCodeKey] = useState<CodeSampleKey>('node');
   const [copiedCodeKey, setCopiedCodeKey] = useState<CodeSampleKey | ''>('');
 
@@ -126,6 +130,7 @@ export const QRCodePlayground = () => {
   useEffect(() => {
     return () => {
       revokeObjectUrl(previewUrlRef.current);
+      revokeObjectUrl(uploadPreviewUrlRef.current);
     };
   }, []);
 
@@ -157,7 +162,20 @@ export const QRCodePlayground = () => {
   };
 
   const scanUpload = async (file: File | undefined) => {
-    if (!file || !qr) return;
+    if (!file) return;
+
+    const preview = URL.createObjectURL(file);
+    uploadPreviewUrlRef.current = preview;
+    setUploadPreviewUrl((current) => {
+      revokeObjectUrl(current);
+      return preview;
+    });
+    setUploadDetails(null);
+
+    if (!qr) {
+      setUploadResult('扫码模块加载中...');
+      return;
+    }
 
     setUploadResult('扫描中...');
 
@@ -165,13 +183,36 @@ export const QRCodePlayground = () => {
 
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const result = await qr.scan(bytes);
-      if (scanVersion === uploadScanVersionRef.current) {
-        setUploadResult(result ?? '未识别到二维码');
+      const details = await qr.scanDetailed(bytes);
+      if (scanVersion !== uploadScanVersionRef.current) return;
+
+      setUploadDetails(details);
+      setUploadResult(details?.text ?? '未识别到二维码');
+
+      if (details) {
+        try {
+          const annotated = await createAnnotatedImage(preview, details);
+          if (scanVersion !== uploadScanVersionRef.current) {
+            revokeObjectUrl(annotated);
+            return;
+          }
+
+          // 用画好定位框的新图片替换原图，新标签页打开时也能看到标注。
+          uploadPreviewUrlRef.current = annotated;
+          setUploadPreviewUrl((current) => {
+            revokeObjectUrl(current);
+            return annotated;
+          });
+          setUploadDetails(null);
+        }
+        catch {
+          // 生成标注图失败时保留原图和临时 SVG 覆盖层。
+        }
       }
     }
     catch (reason) {
       if (scanVersion === uploadScanVersionRef.current) {
+        setUploadDetails(null);
         setUploadResult(reason instanceof Error ? reason.message : '扫描失败');
       }
     }
@@ -252,13 +293,7 @@ export const QRCodePlayground = () => {
         </Card>
 
         <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
-          {/*
-            右侧预览列自身可滚动（矮视口下仍能看全上传扫码面板），但不要加
-            overscroll-contain：它会在内层滚到边界后继续吞掉滚轮事件，导致鼠标
-            停在预览区时页面（左侧配置）无法继续滚动。保留默认的滚动链后，
-            内层滚到头会自动把滚轮交给页面，也就是让左侧配置继续移动。
-          */}
-          <div className="grid min-w-0 gap-5 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1">
+          <div className="grid min-w-0 gap-5">
             <PreviewPanel
               byteLength={byteLength}
               copied={copiedCodeKey === selectedSample.key}
@@ -273,7 +308,9 @@ export const QRCodePlayground = () => {
               onScanCurrent={() => void scanCurrent()}
             />
             <UploadScanPanel
+              details={uploadDetails}
               fileInputRef={fileInputRef}
+              previewUrl={uploadPreviewUrl}
               uploadResult={uploadResult}
               onScanUpload={(file) => void scanUpload(file)}
             />

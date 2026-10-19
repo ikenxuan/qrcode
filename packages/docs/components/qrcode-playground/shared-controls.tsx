@@ -315,17 +315,26 @@ export const ResultBlock = ({ label, value }: { label: string; value: string }) 
 export const FieldSection = ({
   title,
   description,
+  icon,
   children,
 }: {
   title: string;
   description?: string;
+  icon?: ReactNode;
   children: ReactNode;
 }) => {
   return (
-    <section className="grid min-w-0 gap-4 rounded-lg border border-border/80 bg-rust-soft/30 p-4">
-      <div className="grid min-w-0 gap-1">
-        <Label>{title}</Label>
-        {description ? <Description>{description}</Description> : null}
+    <section className="grid min-w-0 gap-4 rounded-xl border border-border/70 bg-rust-soft/25 p-4 sm:p-5">
+      <div className="flex min-w-0 items-start gap-3">
+        {icon ? (
+          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-rust-soft/80 text-rust">
+            {icon}
+          </span>
+        ) : null}
+        <div className="grid min-w-0 gap-1">
+          <Label className="text-sm font-semibold text-foreground">{title}</Label>
+          {description ? <Description className="text-xs leading-5">{description}</Description> : null}
+        </div>
       </div>
       {children}
     </section>

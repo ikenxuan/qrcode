@@ -60,6 +60,43 @@ export type OutputFormat = (typeof OutputFormat)[keyof typeof OutputFormat]
 /** 输出编码方式 */
 export type Encoding = 'binary' | 'base64'
 
+/** 扫描结果中的定位点，坐标单位为原图像素 */
+export interface ScanPoint {
+  x: number
+  y: number
+}
+
+/** 抖音码的圆形范围，坐标单位为原图像素 */
+export interface ScanCircle {
+  /** 圆心 X 坐标 */
+  cx: number
+  /** 圆心 Y 坐标 */
+  cy: number
+  /** 半径 */
+  r: number
+}
+
+/** 带位置信息的扫描结果 */
+export interface ScanDetails {
+  /** 解码出的文本内容 */
+  text: string
+  /** 原图宽度（像素） */
+  width: number
+  /** 原图高度（像素） */
+  height: number
+  /**
+   * 定位点（原图像素坐标）。
+   *
+   * - 标准二维码：三个定位图案中心，部分版本还会附带对齐图案中心；
+   * - 抖音码：作品分享码返回中心圆盘圆心，名片码返回三个圆形定位标记的中心。
+   */
+  points: ScanPoint[]
+  /**
+   * 抖音码的圆形范围。标准二维码识别时为 `null`。
+   */
+  circle: ScanCircle | null
+}
+
 /** 根据编码方式推导返回类型 */
 export type GenerateResult<E extends Encoding> = E extends 'base64' ? string : Uint8Array<ArrayBuffer>
 

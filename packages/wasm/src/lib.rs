@@ -15,7 +15,7 @@ mod logo;
 mod scan;
 use color::parse_color;
 use logo::round_logo_corners;
-use scan::scan_qr;
+use scan::{scan_qr, scan_qr_detailed};
 
 // ─── 配置结构体（从 JS 侧反序列化） ───────────────────────────────────────────
 
@@ -308,4 +308,15 @@ pub fn generate_svg(options: JsValue) -> Result<String, JsError> {
 #[wasm_bindgen]
 pub fn scan(image_data: &[u8]) -> Option<String> {
     scan_qr(image_data)
+}
+
+/// 扫描图片中的 QR 码，返回文本和原图坐标下的位置信息
+///
+/// 返回 `{ text, width, height, points, circle }`。`points` 是定位点：
+/// 标准二维码为定位图案中心，抖音码为圆心或三个圆形标记中心；
+/// 抖音码的 `circle` 是覆盖数据环的圆形范围。
+#[wasm_bindgen(js_name = "scanDetailed")]
+pub fn scan_detailed(image_data: &[u8]) -> Option<JsValue> {
+    let outcome = scan_qr_detailed(image_data)?;
+    serde_wasm_bindgen::to_value(&outcome).ok()
 }
