@@ -194,7 +194,7 @@ fn try_decode_pure(gray: &GrayImage) -> Option<LocatedText> {
 fn decode_with(gray: &GrayImage, charset: Option<&str>, pure: bool) -> Option<LocatedText> {
     let (w, h) = gray.dimensions();
     let data = gray.as_raw().clone();
-    let source = Luma8LuminanceSource::new(data, w, h);
+    let source = Luma8LuminanceSource::new(data, w, h).ok()?;
     let mut bitmap = BinaryBitmap::new(HybridBinarizer::new(source));
     let mut hints = DecodeHints::default();
     hints.TryHarder = Some(true);

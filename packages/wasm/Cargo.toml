@@ -8,14 +8,16 @@ license = "MIT"
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2.122"
-serde = { version = "1.0.228", features = ["derive"] }
+wasm-bindgen = "0.2.129"
+serde = { version = "1.0.229", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
-base64 = "0.22.1"
-qr-code-styling = { version = "0.2.4", default-features = false, features = ["png", "jpeg", "webp"] }
-resvg = "0.45.0"
+base64 = "0.23.1"
+qr-code-styling = { version = "0.2.4", default-features = false }
+# 只渲染内部生成的几何 SVG，不需要文本、字体和 svgz 支持；
+# raster-images 用于解码 SVG 内嵌的 Logo / 右上角图片。
+resvg = { version = "0.48.1", default-features = false, features = ["raster-images"] }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
-rxing = { version = "0.9.0", default-features = false, features = ["wasm_support", "encoding_rs", "qrcode", "decoders"] }
+rxing = { version = "0.9.3", default-features = false, features = ["wasm_support", "encoding_rs", "qrcode", "decoders"] }
 
 [profile.release]
 lto = true

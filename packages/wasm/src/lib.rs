@@ -4,7 +4,7 @@ use qr_code_styling::{
         ImageOptions, QROptions,
     },
     types::{CornerDotType, CornerSquareType, DotType},
-    Mode, OutputFormat, QRCodeStyling, ShapeType,
+    Mode, QRCodeStyling, ShapeType,
 };
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
@@ -251,46 +251,32 @@ fn build_qr(opts: QRCodeOpts) -> Result<QRCodeStyling, String> {
 
 /// 生成 QR 码光栅图（PNG/JPEG/WebP）
 ///
-/// 当配置了透明背景且输出格式为 PNG/WebP 时，走 SVG → resvg 渲染路径
-/// 以保留 alpha 通道；否则直接使用 qr-code-styling 内置渲染。
+/// 统一走 SVG → resvg 渲染，避免 qr-code-styling 的 raster 特性
+/// 再引入一份 resvg 和完整的字体栈。
 #[wasm_bindgen]
 pub fn generate(options: JsValue, format: &str) -> Result<Vec<u8>, JsError> {
     let opts: QRCodeOpts =
         serde_wasm_bindgen::from_value(options).map_err(|e| JsError::new(&e.to_string()))?;
 
-    let needs_transparent_raster = opts
-        .background_options
-        .as_ref()
-        .map(|bg| bg.transparent == Some(true))
-        .unwrap_or(false)
-        && matches!(format, "png" | "webp");
-
     let qr = build_qr(opts).map_err(|e| JsError::new(&e))?;
+    let svg = qr.render_svg().map_err(|e| JsError::new(&format!("{e}")))?;
 
-    if needs_transparent_raster {
-        let svg = qr.render_svg().map_err(|e| JsError::new(&format!("{e}")))?;
-        render_svg_transparent(&svg, format)
-    } else {
-        let output_format = match format {
-            "png" => OutputFormat::Png,
-            "jpeg" => OutputFormat::Jpeg,
-            "webp" => OutputFormat::WebP,
-            _ => OutputFormat::Svg,
-        };
-        qr.render(output_format).map_err(|e| JsError::new(&format!("{e}")))
+    match format {
+        "svg" => Ok(svg.into_bytes()),
+        "png" | "jpeg" | "webp" => render_svg_raster(&svg, format),
+        _ => Err(JsError::new(&format!("不支持的输出格式：{format}"))),
     }
 }
 
-/// 透明背景光栅渲染
+/// 把 SVG 光栅化为 PNG / JPEG / WebP
 ///
-/// qr-code-styling 的内置 PNG/WebP 渲染不支持透明背景，
-/// 因此先渲染为 SVG，再通过 resvg 光栅化为带 alpha 通道的像素数据。
-fn render_svg_transparent(svg: &str, format: &str) -> Result<Vec<u8>, JsError> {
-    use image::codecs::png::PngEncoder;
-    use image::codecs::webp::WebPEncoder;
-    use image::{ColorType, ImageEncoder};
-    use resvg::tiny_skia::Pixmap;
+/// tiny-skia 的像素是预乘 alpha，编码前要转回直通 alpha。
+/// JPEG 不支持透明，先铺白底。
+fn render_svg_raster(svg: &str, format: &str) -> Result<Vec<u8>, JsError> {
+    use image::{DynamicImage, ImageFormat, RgbaImage};
+    use resvg::tiny_skia::{Color, Pixmap, Transform};
     use resvg::usvg::{Options, Tree};
+    use std::io::Cursor;
 
     let tree = Tree::from_str(svg, &Options::default())
         .map_err(|e| JsError::new(&format!("SVG parse error: {e}")))?;
@@ -302,26 +288,42 @@ fn render_svg_transparent(svg: &str, format: &str) -> Result<Vec<u8>, JsError> {
     let mut pixmap = Pixmap::new(width, height)
         .ok_or_else(|| JsError::new("Failed to create pixmap"))?;
 
-    // 不填充白色背景，pixmap 默认是全透明 (RGBA 0,0,0,0)
-    resvg::render(&tree, resvg::tiny_skia::Transform::default(), &mut pixmap.as_mut());
-
-    let data = pixmap.data();
-    let mut buf = Vec::new();
-
-    match format {
-        "webp" => {
-            WebPEncoder::new_lossless(&mut buf)
-                .write_image(data, width, height, ColorType::Rgba8.into())
-                .map_err(|e| JsError::new(&format!("WebP encode error: {e}")))?;
-        }
-        _ => {
-            PngEncoder::new(&mut buf)
-                .write_image(data, width, height, ColorType::Rgba8.into())
-                .map_err(|e| JsError::new(&format!("PNG encode error: {e}")))?;
-        }
+    if format == "jpeg" {
+        pixmap.fill(Color::WHITE);
     }
 
-    Ok(buf)
+    resvg::render(&tree, Transform::default(), &mut pixmap.as_mut());
+
+    let data: Vec<u8> = pixmap
+        .pixels()
+        .iter()
+        .flat_map(|p| {
+            let c = p.demultiply();
+            [c.red(), c.green(), c.blue(), c.alpha()]
+        })
+        .collect();
+    let image = RgbaImage::from_raw(width, height, data)
+        .ok_or_else(|| JsError::new("Failed to create image"))?;
+    let image = DynamicImage::ImageRgba8(image);
+
+    let mut buf = Cursor::new(Vec::new());
+    let image_format = match format {
+        "jpeg" => ImageFormat::Jpeg,
+        "webp" => ImageFormat::WebP,
+        _ => ImageFormat::Png,
+    };
+
+    if format == "jpeg" {
+        DynamicImage::ImageRgb8(image.to_rgb8())
+            .write_to(&mut buf, image_format)
+            .map_err(|e| JsError::new(&format!("JPEG encode error: {e}")))?;
+    } else {
+        image
+            .write_to(&mut buf, image_format)
+            .map_err(|e| JsError::new(&format!("{format} encode error: {e}")))?;
+    }
+
+    Ok(buf.into_inner())
 }
 
 /// 生成 QR 码 SVG 字符串
@@ -419,4 +421,28 @@ pub fn generate_dy_svg(options: JsValue) -> Result<String, JsError> {
     let (data, encode, render) = dy_settings(options)?;
     let encoded = encode_text(&data, encode).map_err(|e| JsError::new(&e))?;
     render_dy_svg(&encoded, &render).map_err(|e| JsError::new(&e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::render_svg_raster;
+
+    /// tiny-skia 输出预乘 alpha，编码前必须转回直通 alpha，
+    /// 否则半透明颜色会整体变暗。
+    #[test]
+    fn semi_transparent_png_uses_straight_alpha() {
+        let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#ff00007f"/></svg>"##;
+        let png = render_svg_raster(svg, "png").unwrap();
+        let image = image::load_from_memory(&png).unwrap().to_rgba8();
+        assert_eq!(image.get_pixel(4, 4).0, [255, 0, 0, 127]);
+    }
+
+    /// JPEG 没有 alpha 通道，透明区域应铺白底。
+    #[test]
+    fn jpeg_gets_white_background() {
+        let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"></svg>"#;
+        let jpeg = render_svg_raster(svg, "jpeg").unwrap();
+        let image = image::load_from_memory(&jpeg).unwrap().to_rgb8();
+        assert!(image.get_pixel(4, 4).0.iter().all(|&v| v >= 250));
+    }
 }
