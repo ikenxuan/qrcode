@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.8.0](https://github.com/ikenxuan/qrcode/compare/v1.7.0...v1.8.0) (2026-10-20)
+
+
+### ✨ 新功能
+
+* **dy:** 支持格式码 6 五环版式 ([7dfcb2f](https://github.com/ikenxuan/qrcode/commit/7dfcb2f1c2098824a5cf3bc815dbd9ffb05857d6))
+
+
+### 🐛 错误修复
+
+* **dy:** 提升抖音码在截图与小尺寸下的识别率 ([c663157](https://github.com/ikenxuan/qrcode/commit/c663157382b4a7210fb755f05511cb35a345457b))
+
+
+### ⚡️ 性能优化
+
+* **wasm:** 统一位图渲染路径并更新依赖 ([84d21a0](https://github.com/ikenxuan/qrcode/commit/84d21a0a452fef2e3ddc415a2db728b682406b30))
+
+
+### 📝 文档更新
+
+* 重写 README 与文档站文案 ([7d4c13c](https://github.com/ikenxuan/qrcode/commit/7d4c13c656db19f17fdca6682eb9bb636379e592))
+
 ## [1.7.0](https://github.com/ikenxuan/qrcode/compare/v1.6.0...v1.7.0) (2026-10-20)
 
 
