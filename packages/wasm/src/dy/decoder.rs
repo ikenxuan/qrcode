@@ -470,15 +470,13 @@ mod tests {
 
     #[test]
     fn reads_known_bitstream() {
-        // 真实样本的 40 字节消息。
-        let message = [
-            0x42, 0x16, 0x87, 0x47, 0x47, 0x07, 0x33, 0xa2, 0xf2, 0xf7, 0x62, 0xe6, 0x46, 0xf7,
-            0x57, 0x96, 0x96, 0xe2, 0xe6, 0x36, 0xf6, 0xd2, 0xf7, 0x57, 0x46, 0x24, 0xb6, 0x75,
-            0x44, 0xa5, 0x26, 0xd6, 0xc4, 0x92, 0xf0, 0xec, 0x11, 0xec, 0x11, 0xec,
-        ];
+        // 用编码器生成的消息验证字节模式解析。
+        let encoded =
+            crate::dy::encode_text("https://bing.com", crate::dy::EncodeOptions::default())
+                .expect("encodable");
         assert_eq!(
-            parse_qr_bitstream(&message).unwrap(),
-            "https://v.douyin.com/utbKgTJRmlI/"
+            parse_qr_bitstream(&encoded.message).unwrap(),
+            "https://bing.com"
         );
     }
 
@@ -489,12 +487,9 @@ mod tests {
             FORMAT_CODEWORDS, FORMAT_XOR, RING_MODULES, STRUCT_BITS,
         };
 
-        let payload: [u8; 52] = [
-            0x42, 0x16, 0x87, 0x47, 0x47, 0x07, 0x33, 0xa2, 0xf2, 0xf7, 0x62, 0xe6, 0x46, 0xf7,
-            0x57, 0x96, 0x96, 0xe2, 0xe6, 0x36, 0xf6, 0xd2, 0xf7, 0x57, 0x46, 0x24, 0xb6, 0x75,
-            0x44, 0xa5, 0x26, 0xd6, 0xc4, 0x92, 0xf0, 0xec, 0x11, 0xec, 0x11, 0xec, 0xe9, 0xd9,
-            0xe5, 0xae, 0x6b, 0x32, 0x2f, 0x9d, 0x59, 0x4d, 0xd7, 0x3d,
-        ];
+        let payload = crate::dy::encode_text("https://bing.com", crate::dy::EncodeOptions::default())
+            .expect("encodable")
+            .payload;
         let format_code = 5usize;
         let param = 20usize;
         let mask_id = 4usize;
@@ -528,7 +523,7 @@ mod tests {
         assert_eq!(candidate.format_code, format_code);
         assert_eq!(candidate.mask_id, mask_id);
         let decoded = decode_candidate(&candidate).expect("candidate decode");
-        assert_eq!(decoded.text, "https://v.douyin.com/utbKgTJRmlI/");
+        assert_eq!(decoded.text, "https://bing.com");
         assert_eq!(decoded.errors, 0);
         assert_eq!(bits_to_int(&rings[1], &layout.field_positions), value18);
         assert_eq!(RING_MODULES, 120);

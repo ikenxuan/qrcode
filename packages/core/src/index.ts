@@ -158,8 +158,8 @@ export const generateSvg = async (options: QRCodeOptions): Promise<string> => {
  * ```ts
  * import { generateDy } from '@ikenxuan/qrcode'
  *
- * const png = await generateDy({ data: 'https://v.douyin.com/utbKgTJRmlI/' }, 'png')
- * const svg = await generateDySvg({ data: 'https://v.douyin.com/utbKgTJRmlI/' })
+ * const png = await generateDy({ data: 'https://bing.com' }, 'png')
+ * const svg = await generateDySvg({ data: 'https://bing.com' })
  * ```
  *
  * @param options - 抖音码生成配置。

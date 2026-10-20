@@ -5,11 +5,7 @@ description: 使用 generate、generateSvg 和 generateDy 输出标准二维码�
 
 # 生成二维码
 
-生成 API 由 `generate()` 与 `generateSvg()` 提供。默认入口中它们是 Node.js 异步方法；
-浏览器使用 `@ikenxuan/qrcode/browser` 中的异步同名方法。
-样式化和栅格渲染最终会进入
-[`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) 中的 Rust WASM 实现，
-底层生成能力来自 [`qr-code-styling`](https://crates.io/crates/qr-code-styling)。
+`generate()` 输出图片二进制，`generateSvg()` 输出 SVG 字符串。默认入口面向 Node.js；浏览器使用 `@ikenxuan/qrcode/browser` 中的同名方法。
 
 ## 基础生成
 
@@ -118,15 +114,13 @@ writeFileSync('qrcode.png', qrcode);
 
 ## 抖音码
 
-`generateDy()` 生成抖音码（`BEF_CODE_TYPE_DY_CODE`），支持 PNG、WebP、JPEG 和 SVG。
-它不复用标准 QR 的方阵布局，而是写入四条数据环、中心圆盘、三个定位圆环和外圈装饰；
-默认参数复刻官方作品分享码的默认样式（格式码 5、参数 20、掩码 4）。
+`generateDy()` 生成抖音码，支持 PNG、JPEG、WebP 和 SVG。默认参数复刻官方作品分享码的版式。
 
 ```ts twoslash title="generate-dy.ts"
 import { generateDy, scan } from '@ikenxuan/qrcode';
 
 const png = await generateDy({
-  data: 'https://v.douyin.com/utbKgTJRmlI/',
+  data: 'https://bing.com',
   size: 400,
 }, 'png');
 
@@ -135,8 +129,7 @@ const text = await scan(png);
 //    ^?
 ```
 
-默认布局的消息容量是 40 字节，UTF-8 文本最多 **38 字节**（大约 12 个汉字）。
-超出时会抛出 `文本过长` 错误。同步版本为
+默认布局最多写入 **38 字节** UTF-8 文本（约 12 个汉字），超出会抛出 `文本过长`。同步版本为
 `generateDySync(options, format?, encoding?)`，`@ikenxuan/qrcode/browser` 入口也导出同名方法。
 
 需要 SVG 字符串时使用 `generateDySvg()` / `generateDySvgSync()`；右上角图片会以
@@ -144,13 +137,13 @@ data URI 内嵌，方便直接写入 DOM 或继续编辑。
 
 ### 样式调整
 
-颜色、透明背景、模块形状与圆角、外框、中心图标都不参与协议数据，可以自由调整：
+颜色、透明背景、模块形状、外圈和中心图标都不影响编码内容，可以自由调整。
 
 ```ts twoslash title="generate-dy-styled.ts"
 import { generateDy } from '@ikenxuan/qrcode';
 
 const png = await generateDy({
-  data: 'https://v.douyin.com/utbKgTJRmlI/',
+  data: 'https://bing.com',
   size: 420,
   darkColor: '#1f3a5f',
   lightColor: '#f7f2e8',
@@ -169,11 +162,10 @@ const png = await generateDy({
 `transparent: true` 会在 PNG / WebP / SVG 中保留 alpha 通道；JPEG 不支持透明，
 透明区域会填充白色。`moduleRadius` 只对 `moduleStyle: 'rounded'` 生效。
 
-外圈装饰全部位于数据环之外，不参与编码，因此可以自由更换。`frameStyle` 支持
+外圈不参与编码，可以自由更换。`frameStyle` 支持
 `arcs`（官方四段弧）、`ring`（圆环）、`dashes`（断续弧段）、`dots`（圆点串）、
 `ticks`（刻度线）、`double`（双层圆环）、`segments`（分段圆环）、`spark`（长短弧）、
-`orbit`（双轨圆点）和 `gear`（齿轮环）。圆环类样式会在三个定位圆环和右上角图片处
-自动断开，不会覆盖定位点。
+`orbit`（双轨圆点）和 `gear`（齿轮环）。圆环类样式会在定位点和右上角图片处自动断开。
 
 | 字段 | 说明 |
 | --- | --- |
@@ -182,14 +174,9 @@ const png = await generateDy({
 | `frameSpan` | `arcs` 每段弧的角度，默认 `64`，范围 `4` ~ `120`。 |
 | `frameCount` | `dashes` / `dots` / `ticks` 的元素数量，默认 `24`，范围 `4` ~ `120`。 |
 
-分段式外圈会自动避开 45° / 135° / 225° 的三个定位圆环和 315° 的右上角图片，
-不会与它们重叠。
-
 ### 中心图片
 
-`centerImage` 接收图片二进制，会按 cover 方式居中裁剪成圆形，覆盖整个中心圆盘并
-替代播放图标（`logo` 不再绘制）。中心图片不占用有效数据位，生成结果仍可被
-`scan` 识别：
+`centerImage` 接收图片二进制，按 cover 居中裁剪成圆形，覆盖中心圆盘并替代播放图标。中心图片不参与编码，生成结果仍可被 `scan` 识别。
 
 ```ts twoslash title="generate-dy-center.ts"
 // @types: node
@@ -199,14 +186,12 @@ import { generateDy } from '@ikenxuan/qrcode';
 const avatar = readFileSync('avatar.png');
 
 const png = await generateDy({
-  data: 'https://v.douyin.com/utbKgTJRmlI/',
+  data: 'https://bing.com',
   centerImage: avatar,
 }, 'png');
 ```
 
-右上角 315° 方向是官方版式中的圆形图片槽位。它默认留空，传入 `badgeImage`
-（图片二进制）后会自动居中裁剪并裁成圆形；该槽位不占用有效数据位。
-`badgeRadius` 控制图片半径，默认 `21`（设计单位）：
+右上角是官方版式里的圆形图片槽位，默认留空。传入 `badgeImage` 后会按 cover 居中裁剪成圆形，`badgeRadius` 控制半径，默认 `21`（设计单位）。
 
 ```ts twoslash title="generate-dy-badge.ts"
 // @types: node
@@ -216,20 +201,19 @@ import { generateDy } from '@ikenxuan/qrcode';
 const avatar = readFileSync('avatar.png');
 
 const webp = await generateDy({
-  data: 'https://v.douyin.com/utbKgTJRmlI/',
+  data: 'https://bing.com',
   badgeImage: avatar,
   badgeRadius: 18,
 }, 'webp');
 ```
 
 <Callout type="info">
-  抖音 App 是否处理解码结果取决于载荷内容。测试时可使用
-  `https://v.douyin.com/...` 形式的分享链接；普通 URL 可能被 App 拒绝。
+  抖音 App 是否处理解码结果取决于载荷内容，普通 URL 可能被 App 拒绝。
 </Callout>
 
 ## 浏览器下载
 
-浏览器端使用 `@ikenxuan/qrcode/browser`，该入口不依赖 Node.js 内置模块，并通过 Web Worker 执行 WASM 计算。
+浏览器端使用 `@ikenxuan/qrcode/browser`，计算通过 Web Worker 执行。
 
 ```ts twoslash title="download.ts"
 import { generate } from '@ikenxuan/qrcode/browser';

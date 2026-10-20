@@ -273,7 +273,7 @@ export function PlaygroundControls({
         description={
           isDy
             ? '抖音码最多承载 38 字节 UTF-8 文本（约 12 个汉字），超出后无法生成。'
-            : '支持任意文本或链接，生成与扫描共用同一份内容。'
+            : '输入要编码的文本或链接。'
         }
         icon={<Type aria-hidden className="size-4" />}
         title="内容"

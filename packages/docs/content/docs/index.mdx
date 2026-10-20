@@ -5,12 +5,7 @@ description: 安装 @ikenxuan/qrcode，并在 Node.js 或浏览器中生成与�
 
 # 快速开始
 
-`@ikenxuan/qrcode` 是 TypeScript 封装层，底层由仓库中的
-[`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) Rust crate 编译而来。
-Rust 侧生成逻辑基于 [`qr-code-styling`](https://crates.io/crates/qr-code-styling)，
-扫码逻辑基于 [`rxing`](https://crates.io/crates/rxing)。核心包将
-[`@ikenxuan/qrcode-wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) 的 WASM 产物内联到
-TypeScript 封装层中，因此应用侧无需手动加载 `.wasm` 文件，也不需要初始化函数。
+`@ikenxuan/qrcode` 用来生成和识别二维码。核心由 Rust 编译成 WebAssembly，WASM 已经内联进包里，import 即可使用，不需要手动加载 `.wasm` 文件或初始化。
 
 <Cards>
   <Card title="生成二维码" href="/docs/generate">
@@ -68,15 +63,14 @@ const png = await generate({ data: 'https://example.com' }, 'png');
 const svg = await generateSvg({ data: 'https://example.com' });
 //     ^?
 
-const dyPng = await generateDy({ data: 'https://v.douyin.com/utbKgTJRmlI/' });
+const dyPng = await generateDy({ data: 'https://bing.com' });
 //     ^?
 
 const text = await scan(png);
 //     ^?
 ```
 
-默认入口 `@ikenxuan/qrcode` 面向 Node.js。`generate()`、`generateSvg()`、`generateDy()` 和 `scan()` 会返回 Promise，
-内部通过 `worker_threads` 调用 WASM，避免长时间生成或扫描阻塞主线程。
+默认入口面向 Node.js。`generate()`、`generateSvg()`、`generateDy()` 和 `scan()` 都返回 Promise，计算通过 `worker_threads` 放到后台线程。
 
 ## 浏览器调用
 
@@ -85,52 +79,20 @@ import { generate, generateSvg, generateDy, scan } from '@ikenxuan/qrcode/browse
 
 const png = await generate({ data: location.href }, 'png');
 const svg = await generateSvg({ data: location.href });
-const dyPng = await generateDy({ data: 'https://v.douyin.com/utbKgTJRmlI/' });
+const dyPng = await generateDy({ data: 'https://bing.com' });
 const text = await scan(png);
 ```
 
-浏览器、React Client Component、Vue SFC 等客户端环境应使用 `@ikenxuan/qrcode/browser`。
-这个入口不会导入 Node.js 的 `worker_threads`，会通过浏览器 Web Worker 执行 WASM 计算。
+浏览器、React Client Component、Vue SFC 等客户端环境使用 `@ikenxuan/qrcode/browser`。这个入口不依赖 Node.js 内置模块，计算通过浏览器 Web Worker 执行。
 
-## 工作方式
+## 实现
 
-<Steps>
-<Step>
-
-### 准备配置
-
-使用 `QRCodeOptions` 描述二维码内容、尺寸、点阵、定位角、背景和 Logo。
-
-</Step>
-<Step>
-
-### 生成图片
-
-Node.js 中通过异步 API 输出二进制或 SVG；浏览器中通过 `/browser` 入口的异步 API 生成。
-
-</Step>
-<Step>
-
-### 读取结果
-
-把生成结果写入文件、转成 Blob 下载，或把图片二进制传给 `scan()` 做识别。
-
-</Step>
-</Steps>
-
-## Rust / WASM 来源
-
-| 链接 | 说明 |
-| --- | --- |
-| [`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) | Rust crate 与 wasm-pack 构建入口。 |
-| [`Cargo.toml`](https://github.com/ikenxuan/qrcode/blob/main/packages/wasm/Cargo.toml) | Rust 依赖、crate-type 与 release profile 配置。 |
-| [`qr-code-styling`](https://crates.io/crates/qr-code-styling) | 底层二维码生成和样式化能力。 |
-| [`rxing`](https://crates.io/crates/rxing) | 底层二维码识别能力。 |
+底层是 [`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm) 里的 Rust crate。生成基于 [`qr-code-styling`](https://crates.io/crates/qr-code-styling)，识别基于 [`rxing`](https://crates.io/crates/rxing)。
 
 ## 环境支持
 
 | 环境 | 说明 |
 | --- | --- |
-| Node.js | 默认入口支持异步 worker 调度，也提供 `Sync` 同步方法。 |
-| 浏览器 | 使用 `@ikenxuan/qrcode/browser`，通过 Web Worker 生成预览、下载二维码、扫描用户上传图片。 |
-| ESM | 包为 ESM，适合现代 Next.js、Vite、Node.js ESM 项目。 |
+| Node.js | 支持异步 API 和同步 API。 |
+| 浏览器 | 使用 `@ikenxuan/qrcode/browser`，可生成、下载和扫描。 |
+| ESM | 包为 ESM，适用于现代 Next.js、Vite 和 Node.js ESM 项目。 |

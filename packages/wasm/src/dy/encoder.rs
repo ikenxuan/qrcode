@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn default_layout_is_rs_52_40() {
         let encoded = encode_text(
-            "https://v.douyin.com/utbKgTJRmlI/",
+            "https://bing.com",
             EncodeOptions::default(),
         )
         .expect("encodable");
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn data_modules_match_payload_bits() {
         let encoded = encode_text(
-            "https://v.douyin.com/utbKgTJRmlI/",
+            "https://bing.com",
             EncodeOptions::default(),
         )
         .expect("encodable");

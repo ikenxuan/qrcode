@@ -7,28 +7,28 @@ import { fileURLToPath } from 'node:url'
  * 抖音码的端到端回归。
  *
  * 抖音码没有标准 QR 的定位图案，`scan` 在常规 rxing 解码失败后会改走
- * `packages/wasm/src/dy` 的环采样解码路径。样本来自真实抖音分享码。
+ * `packages/wasm/src/dy` 的环采样解码路径。样本为本地生成的测试码。
  */
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const fixture = (name: string): Uint8Array =>
   new Uint8Array(readFileSync(resolve(__dirname, 'fixtures', name)))
 
 describe('scan - 抖音码', () => {
-  it('扫描作品分享码样本', async () => {
+  it('扫描官方版式样本', async () => {
     const { scanSync } = await import('../dist/index.js')
-    expect(scanSync(fixture('dy-work-share.png'))).toBe('https://v.douyin.com/utbKgTJRmlI/')
+    expect(scanSync(fixture('dy-work-share.png'))).toBe('https://bing.com')
   })
 
-  it('扫描第二个真实样本', async () => {
+  it('扫描另一种样式的样本', async () => {
     const { scanSync } = await import('../dist/index.js')
-    expect(scanSync(fixture('dy-sample-2.png'))).toBe('https://v.douyin.com/bU3KRLRB9CE/')
+    expect(scanSync(fixture('dy-sample-2.png'))).toBe('https://bing.com')
   })
 
   it('扫描低分辨率截图样本', async () => {
     const { scanDetailedSync } = await import('../dist/index.js')
     const result = scanDetailedSync(fixture('dy-low-res.png'))
 
-    expect(result?.text).toBe('https://v.douyin.com/8GS95xmDe_Q/')
+    expect(result?.text).toBe('https://bing.com')
     expect(result?.circle).not.toBeNull()
     expect(result!.circle!.r).toBeGreaterThan(0)
   })
@@ -38,7 +38,7 @@ describe('scan - 抖音码', () => {
     const { scanDetailedSync } = await import('../dist/index.js')
     const result = scanDetailedSync(fixture('dy-busy-background.jpg'))
 
-    expect(result?.text).toBe('https://v.douyin.com/utbKgTJRmlI/')
+    expect(result?.text).toBe('https://bing.com')
     expect(result?.circle).not.toBeNull()
     expect(result!.circle!.cx).toBeGreaterThan(330)
     expect(result!.circle!.cx).toBeLessThan(360)
@@ -51,7 +51,7 @@ describe('scan - 抖音码', () => {
     const { scanDetailedSync } = await import('../dist/index.js')
     const result = scanDetailedSync(fixture('dy-large-screenshot.png'))
 
-    expect(result?.text).toBe('https://v.douyin.com/utbKgTJRmlI/')
+    expect(result?.text).toBe('https://bing.com')
     expect(result?.circle).not.toBeNull()
     expect(result!.circle!.cx).toBeGreaterThan(990)
     expect(result!.circle!.cx).toBeLessThan(1020)
@@ -62,7 +62,7 @@ describe('scan - 抖音码', () => {
   it('异步 scan 同样支持', async () => {
     const { scan } = await import('../dist/index.js')
     await expect(scan(fixture('dy-work-share.png'))).resolves.toBe(
-      'https://v.douyin.com/utbKgTJRmlI/',
+      'https://bing.com',
     )
   })
 
@@ -76,7 +76,7 @@ describe('scan - 抖音码', () => {
     const { scanDetailedSync } = await import('../dist/index.js')
     const result = scanDetailedSync(fixture('dy-work-share.png'))
 
-    expect(result?.text).toBe('https://v.douyin.com/utbKgTJRmlI/')
+    expect(result?.text).toBe('https://bing.com')
     expect(result?.circle).not.toBeNull()
     expect(result!.circle!.r).toBeGreaterThan(0)
     // 作品分享码只有一个定位锚点：中心圆盘的圆心。

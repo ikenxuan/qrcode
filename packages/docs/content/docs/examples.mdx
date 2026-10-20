@@ -38,8 +38,7 @@ const image = await generate({
 
 ## 品牌 Logo 二维码
 
-在二维码中心嵌入品牌 Logo。得益于二维码的纠错能力，即便 Logo 覆盖了中心区域，
-内容依旧可以被正常扫描解码 —— 生成后用 `scan` 自检一次最稳妥。
+在二维码中心嵌入品牌 Logo。二维码有纠错能力，Logo 通常不会影响识别；生成后用 `scan` 自检一次更稳妥。
 
 ```ts twoslash title="brand-logo.ts"
 // @types: node

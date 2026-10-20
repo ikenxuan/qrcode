@@ -1262,7 +1262,7 @@ mod tests {
 
     #[test]
     fn all_frame_styles_render_and_decode() {
-        let text = "https://v.douyin.com/bU3KRLRB9CE/";
+        let text = "https://bing.com";
         let encoded = encode_text(text, EncodeOptions::default()).expect("encodable");
         for style in [
             "arcs", "ring", "dashes", "dots", "ticks", "double", "segments", "spark", "orbit",
@@ -1339,7 +1339,7 @@ mod tests {
 
     #[test]
     fn center_image_covers_disk_and_still_decodes() {
-        let text = "https://v.douyin.com/utbKgTJRmlI/";
+        let text = "https://bing.com";
         let options = RenderOptions {
             center_image: Some(white_png()),
             ..RenderOptions::default()
@@ -1371,7 +1371,7 @@ mod tests {
 
     #[test]
     fn generated_code_decodes_back() {
-        let text = "https://v.douyin.com/utbKgTJRmlI/";
+        let text = "https://bing.com";
         let encoded = encode_text(text, EncodeOptions::default()).expect("encodable");
         let png = render_png(&encoded, &RenderOptions::default()).expect("renderable");
         let gray = image::load_from_memory(&png).expect("valid png").to_luma8();
@@ -1381,7 +1381,7 @@ mod tests {
 
     #[test]
     fn custom_style_still_decodes() {
-        let text = "https://v.douyin.com/bU3KRLRB9CE/";
+        let text = "https://bing.com";
         let options = RenderOptions {
             size: Some(400),
             dark_color: "#1f3a5f".to_string(),

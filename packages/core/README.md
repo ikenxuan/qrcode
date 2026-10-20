@@ -23,7 +23,7 @@ const b64 = await generate({ data: 'https://example.com' }, 'png', 'base64')
 const svg = await generateSvg({ data: 'https://example.com' })
 
 // 生成抖音码 PNG（官方默认样式）
-const dyPng = await generateDy({ data: 'https://v.douyin.com/utbKgTJRmlI/' })
+const dyPng = await generateDy({ data: 'https://bing.com' })
 
 // 扫描图片中的 QR 码 / 抖音码
 const result = await scan(png) // 'https://example.com'
@@ -80,7 +80,7 @@ WASM 已内联，import 即用，无需初始化，无需关心 `.wasm` 文件�
 
 ```ts
 const png = await generateDy({
-  data: 'https://v.douyin.com/utbKgTJRmlI/',
+  data: 'https://bing.com',
   size: 400,
   darkColor: '#161823',
   transparent: false,
@@ -93,7 +93,7 @@ const png = await generateDy({
   badgeRadius: 21,
 }, 'png')
 
-const svg = await generateDySvg({ data: 'https://v.douyin.com/utbKgTJRmlI/' })
+const svg = await generateDySvg({ data: 'https://bing.com' })
 ```
 
 ### `scan(imageData)`
@@ -149,8 +149,8 @@ import { generate, generateSvg, generateDy, generateDySvg, scan } from '@ikenxua
 
 const png = await generate({ data: location.href }, 'png')
 const svg = await generateSvg({ data: location.href })
-const dyPng = await generateDy({ data: 'https://v.douyin.com/utbKgTJRmlI/' }, 'png')
-const dySvg = await generateDySvg({ data: 'https://v.douyin.com/utbKgTJRmlI/' })
+const dyPng = await generateDy({ data: 'https://bing.com' }, 'png')
+const dySvg = await generateDySvg({ data: 'https://bing.com' })
 const text = await scan(png)
 ```
 

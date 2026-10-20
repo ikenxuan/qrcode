@@ -63,7 +63,7 @@ export const generateSvgSync = (options: QRCodeOptions): string => {
  * ```ts
  * import { generateDySync } from '@ikenxuan/qrcode'
  *
- * const png = generateDySync({ data: 'https://v.douyin.com/utbKgTJRmlI/' }, 'png')
+ * const png = generateDySync({ data: 'https://bing.com' }, 'png')
  * ```
  *
  * @param options - 抖音码生成配置。

@@ -263,8 +263,7 @@ export interface QRCodeOptions {
  * 中心圆盘、三个定位圆环和外圈装饰弧。默认参数复刻官方作品分享码的
  * 默认样式，生成的图片可被 {@link scan} 解回原文。
  *
- * 默认布局最多容纳 38 字节 UTF-8 文本（例如
- * `https://v.douyin.com/utbKgTJRmlI/`）。
+ * 默认布局最多容纳 38 字节 UTF-8 文本。
  */
 export interface DyCodeOptions {
   /** 要编码的数据内容（UTF-8 最多 38 字节） */

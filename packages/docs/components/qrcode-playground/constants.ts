@@ -22,7 +22,7 @@ import type {
 export const fallbackContent = 'https://github.com/ikenxuan/qrcode';
 
 /** 切换到抖音码时使用的默认内容。 */
-export const dyFallbackContent = 'https://v.douyin.com/utbKgTJRmlI/';
+export const dyFallbackContent = 'https://bing.com';
 
 /** 预设与默认状态共用的外观基线。 */
 const presetDefaults: PresetStyle = {

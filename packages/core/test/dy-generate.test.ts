@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
  * 抖音码生成的端到端回归：生成 → 用同一套解码器扫回原文。
  */
 describe('generateDy - 抖音码', () => {
-  const url = 'https://v.douyin.com/utbKgTJRmlI/'
+  const url = 'https://bing.com'
 
   it('默认样式可以解码回原文', async () => {
     const { generateDySync, scanDetailedSync } = await import('../dist/index.js')

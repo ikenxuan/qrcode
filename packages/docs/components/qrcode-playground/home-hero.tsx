@@ -30,11 +30,11 @@ export function HomeHero() {
           <span>Rust + WebAssembly</span>
         </div>
         <div className="grid min-w-0 gap-4">
-          <h1 className="max-w-3xl break-words text-3xl font-semibold tracking-normal text-foreground sm:text-5xl">
+          <h1 className="max-w-3xl wrap-break-word text-3xl font-semibold tracking-normal text-foreground sm:text-5xl">
             @ikenxuan/qrcode
           </h1>
           <p className="max-w-2xl text-base leading-8 text-muted sm:text-lg">
-            高性能标准二维码与抖音码生成、扫码工具。支持多种样式、透明背景、SVG/PNG/JPEG/WebP 输出，
+            标准二维码与抖音码的生成、扫码工具。支持多种样式、透明背景、SVG/PNG/JPEG/WebP 输出，
             并且 WASM 内联，浏览器和 Node.js 都能直接 import 使用。
           </p>
         </div>

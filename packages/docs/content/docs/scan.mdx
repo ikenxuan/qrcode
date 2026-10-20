@@ -5,24 +5,11 @@ description: 使用 scan 从 PNG、JPEG、WebP 图片中读取二维码文本。
 
 # 扫描二维码
 
-`scan(imageData)` 接收图片二进制数据，支持 PNG、JPEG、WebP。默认入口中它是 Node.js 异步方法；
-识别成功返回二维码内容，未识别到返回 `null`。
-扫码实现位于
-[`packages/wasm`](https://github.com/ikenxuan/qrcode/tree/main/packages/wasm)，底层二维码解码依赖
-[`rxing`](https://crates.io/crates/rxing)。
+`scan(imageData)` 接收图片二进制，支持 PNG、JPEG、WebP。默认入口面向 Node.js，识别成功返回文本，失败返回 `null`。
 
 ## 抖音码
 
-`scan` 同时支持抖音码（`BEF_CODE_TYPE_DY_CODE`）。
-这类码没有标准 QR 的定位图案，而是由四条数据环、中心圆盘和定位圆环组成。
-常规 QR 解码失败后，扫描器会自动尝试抖音码解码路径：
-
-1. 通过中心暗盘、白色圆盘或三个定位圆环推导码心与尺度；
-2. 对四条数据环做极坐标采样；
-3. 搜索旋转角与遍历方向，读取格式/参数字段；
-4. 解扰并做 Reed-Solomon 纠错，最后解析 QR 风格位流。
-
-调用方式与普通扫码完全一致，不需要额外参数：
+`scan` 也能识别抖音码，调用方式不变，不需要额外参数。
 
 ```ts twoslash title="scan-dy-code.ts"
 // @types: node
@@ -30,13 +17,12 @@ import { readFileSync } from 'node:fs';
 import { scan } from '@ikenxuan/qrcode';
 
 const image = readFileSync('douyin-code.png');
-const text = await scan(image); // 'https://v.douyin.com/...'
+const text = await scan(image); // 'https://bing.com'
 ```
 
 ## 获取二维码位置
 
-需要把识别结果标在原图上时，使用 `scanDetailed(imageData)`。它返回文本、
-原图尺寸和位置信息：
+需要把识别结果标在原图上时，使用 `scanDetailed(imageData)`，它会返回文本、原图尺寸和位置信息。
 
 ```ts twoslash title="scan-detailed.ts"
 // @types: node
