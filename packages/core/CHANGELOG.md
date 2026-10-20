@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0](https://github.com/ikenxuan/qrcode/compare/v1.6.0...v1.7.0) (2026-10-20)
+
+
+### ✨ 新功能
+
+* 增强抖音码识别并优化文档工作台 ([7c3615e](https://github.com/ikenxuan/qrcode/commit/7c3615ebf2497658b0afd9a7651417208bf8c1ec))
+* 支持抖音码生成与样式化 ([cd4564a](https://github.com/ikenxuan/qrcode/commit/cd4564a05e1c60953c9979b8cf6d39e1f6d13f1f))
+* 支持抖音码解码并迁移文档站到 GitHub Pages ([78686cd](https://github.com/ikenxuan/qrcode/commit/78686cd065030a6e458cd45fa9bfb385e772310b))
+
 ## [1.6.0](https://github.com/ikenxuan/qrcode/compare/v1.5.0...v1.6.0) (2026-10-17)
 
 
