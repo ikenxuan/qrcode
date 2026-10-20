@@ -59,9 +59,35 @@ describe('generateDy - 抖音码', () => {
 
   it('支持其它格式码', async () => {
     const { generateDySync, scanDetailedSync } = await import('../dist/index.js')
-    const result = scanDetailedSync(generateDySync({ data: 'hello', formatCode: 1 }))
+    const text = 'x'.repeat(51)
+    const result = scanDetailedSync(generateDySync({ data: text, formatCode: 6 }))
 
-    expect(result?.text).toBe('hello')
+    expect(result?.text).toBe(text)
+  })
+
+  it('长文本自动使用五环版式', async () => {
+    const { generateDySync, scanSync } = await import('../dist/index.js')
+    const text = `https://bing.com/?q=${'a'.repeat(30)}`
+
+    expect(Buffer.byteLength(text)).toBeGreaterThan(38)
+    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(51)
+    expect(scanSync(generateDySync({ data: text }))).toBe(text)
+  })
+
+  it('五环版式支持全部位图格式', async () => {
+    const { generateDySync, scanSync } = await import('../dist/index.js')
+    const text = 'x'.repeat(51)
+
+    for (const format of ['png', 'webp', 'jpeg'] as const) {
+      expect(scanSync(generateDySync({ data: text, formatCode: 6 }, format)), format).toBe(text)
+    }
+  })
+
+  it('支持三环格式码', async () => {
+    const { generateDySync, scanSync } = await import('../dist/index.js')
+    const text = 'https://bing.com'
+
+    expect(scanSync(generateDySync({ data: text, formatCode: 4 }))).toBe(text)
   })
 
   it('支持右上角图片槽位', async () => {
@@ -171,7 +197,8 @@ describe('generateDy - 抖音码', () => {
   it('文本超过容量时抛错', async () => {
     const { generateDySync } = await import('../dist/index.js')
 
-    expect(() => generateDySync({ data: 'x'.repeat(39) })).toThrow(/文本过长/)
+    expect(() => generateDySync({ data: 'x'.repeat(52) })).toThrow(/文本过长/)
+    expect(() => generateDySync({ data: 'x'.repeat(39), formatCode: 5 })).toThrow(/文本过长/)
   })
 
   it('空文本抛错', async () => {

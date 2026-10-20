@@ -102,7 +102,7 @@ function UploadedImageRow({
       </Button>
       {hasImage ? (
         <>
-          <span className="min-w-0 max-w-full truncate font-mono text-xs text-muted sm:max-w-[12rem]">
+          <span className="min-w-0 max-w-full truncate font-mono text-xs text-muted sm:max-w-48">
             {imageName}
           </span>
           <Button className="w-full sm:w-auto" size="sm" variant="ghost" onPress={onRemove}>
@@ -157,7 +157,7 @@ export function PlaygroundControls({
   ).includes(state.dyFrameStyle);
   const isDy = state.codeType === 'dy';
   const contentBytes = new TextEncoder().encode(state.content).length;
-  const overDyLimit = isDy && contentBytes > 38;
+  const overDyLimit = isDy && contentBytes > 51;
 
   function patchState(patch: Partial<PlaygroundState>) {
     setState((current) => ({ ...current, ...patch }));
@@ -272,7 +272,7 @@ export function PlaygroundControls({
       <FieldSection
         description={
           isDy
-            ? '抖音码最多承载 38 字节 UTF-8 文本（约 12 个汉字），超出后无法生成。'
+            ? '抖音码最多承载 51 字节 UTF-8 文本（约 17 个汉字）。38 字节以内使用四环版式，更长时自动改用五环。'
             : '输入要编码的文本或链接。'
         }
         icon={<Type aria-hidden className="size-4" />}
@@ -288,7 +288,7 @@ export function PlaygroundControls({
           <TextArea rows={4} />
           <Description className={overDyLimit ? 'text-red-600 dark:text-red-400' : undefined}>
             {isDy
-              ? `${contentBytes} / 38 字节${overDyLimit ? ' · 已超出上限' : ''}`
+              ? `${contentBytes} / 51 字节${overDyLimit ? ' · 已超出上限' : ''}`
               : `${state.content.length.toLocaleString()} 个字符`}
           </Description>
         </TextField>

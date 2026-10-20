@@ -57,6 +57,7 @@ export const generateSvgSync = (options: QRCodeOptions): string => {
  * @remarks
  * 抖音码是抖音平台下发的圆形码，默认参数复刻官方作品分享码版式：
  * 深色中心圆盘、四条数据环、三个定位圆环、外圈装饰弧和中心播放图标。
+ * 文本超过 38 字节时会自动改用五环版式（最多 51 字节）。
  * 生成的图片可被 {@link scanSync} 解回原文。
  *
  * @example

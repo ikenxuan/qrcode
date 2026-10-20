@@ -150,7 +150,8 @@ export const generateSvg = async (options: QRCodeOptions): Promise<string> => {
  * @remarks
  * 抖音码（`BEF_CODE_TYPE_DY_CODE`）是抖音平台下发的圆形码。默认参数
  * 复刻官方作品分享码版式：深色中心圆盘、四条数据环、三个定位圆环、
- * 外圈装饰弧和中心播放图标。默认布局最多容纳 38 字节 UTF-8 文本。
+ * 外圈装饰弧和中心播放图标。38 字节以内的文本使用四环版式，更长的
+ * 文本（最多 51 字节）自动改用五环版式。
  *
  * 在 Node.js 中通过 worker 线程执行 WASM 编码与渲染，避免阻塞主线程。
  *

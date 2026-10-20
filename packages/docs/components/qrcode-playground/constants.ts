@@ -420,7 +420,7 @@ export const codeTypes: Array<SelectOption<CodeType>> = [
   {
     label: '抖音码',
     value: 'dy',
-    description: '圆形抖音码，复刻官方默认版式，支持透明背景与多种输出格式，最多 38 字节文本。',
+    description: '圆形抖音码，复刻官方默认版式，支持透明背景与多种输出格式，最多 51 字节文本。',
   },
 ];
 

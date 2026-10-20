@@ -23,7 +23,7 @@ use resvg::usvg::{Options as UsvgOptions, Tree};
 use crate::color::parse_color;
 
 use super::encoder::EncodedCode;
-use super::layout::{DATA_RINGS, DISK_RADIUS, RING_MODULES, RING_RADII};
+use super::layout::{DISK_RADIUS, DISK_RADIUS_5, MAX_RINGS, RING_MODULES, RING_RADII_5};
 
 /// 官方作品分享码使用的深色。
 const DARK_COLOR: &str = "#161823";
@@ -56,7 +56,7 @@ const LOGO_TRIANGLE: [(f64, f64); 3] = [(-3.3, -8.2), (8.7, 0.0), (-3.3, 8.2)];
 const LOGO_TRIANGLE_WIDTH: f64 = 2.2;
 
 /// 各数据环模块的径向厚度（设计单位）。
-const MODULE_THICKNESS: [f64; DATA_RINGS] = [5.2, 3.1, 3.1, 3.1];
+const MODULE_THICKNESS: [f64; MAX_RINGS] = [5.2, 3.1, 3.1, 3.1, 3.1];
 
 /// 单个模块在切向上与相邻模块之间保留的角向间隙（弧度）。
 const MODULE_ANGULAR_GAP_DEG: f64 = 0.18;
@@ -253,6 +253,15 @@ struct SvgOutput {
     badge_center: Option<(f64, f64)>,
 }
 
+/// 中心圆盘半径：五环版式使用更小的圆盘，给最内环让出空间。
+fn center_disk_radius(encoded: &EncodedCode) -> f64 {
+    if encoded.rings.len() >= RING_RADII_5.len() {
+        DISK_RADIUS_5
+    } else {
+        DISK_RADIUS
+    }
+}
+
 /// 构建 SVG。
 ///
 /// `embed_badge` 为 true 时把图片以 data URI 嵌入 SVG（用于 SVG 输出）；
@@ -289,9 +298,9 @@ fn build_svg(
 
     // 数据环：把连续的 1 合并成一条切向短条。
     let module_arc = std::f64::consts::TAU / RING_MODULES as f64;
-    for ring in 0..DATA_RINGS {
+    for ring in 0..encoded.rings.len() {
         let bits = &encoded.rings[ring];
-        let radius = RING_RADII[ring] * scale;
+        let radius = RING_RADII_5[ring] * scale;
         let thickness = MODULE_THICKNESS[ring] * scale;
         let corner_radius = match options.module_style.as_str() {
             "square" => 0.0,
@@ -348,18 +357,33 @@ fn build_svg(
     }
 
     // 中心圆盘和播放图标。圆盘同时是解码器的定位锚点。
+    // 五环版式的最内环更靠近圆心，因此使用更小的圆盘。
+    let disk_radius = center_disk_radius(encoded);
     let _ = write!(
         svg,
         "<circle cx=\"{}\" cy=\"{}\" r=\"{}\" fill=\"{dark}\"/>",
         svg_number(cx),
         svg_number(cy),
-        svg_number(DISK_RADIUS * scale),
+        svg_number(disk_radius * scale),
     );
+    if encoded.rings.len() >= RING_RADII_5.len() && !options.transparent {
+        // 五环版式的最内环紧贴中心圆盘。在圆盘外沿留出一圈背景色，
+        // 避免拍摄模糊或旋转重采样时圆盘与最内环粘连。
+        let _ = write!(
+            svg,
+            "<circle cx=\"{}\" cy=\"{}\" r=\"{}\" fill=\"none\" stroke=\"{light}\" \
+             stroke-width=\"{}\"/>",
+            svg_number(cx),
+            svg_number(cy),
+            svg_number((disk_radius + 0.5) * scale),
+            svg_number(scale),
+        );
+    }
     if let Some(image) = options.center_image.as_deref() {
         // 中心图片覆盖整个圆盘，并替代播放图标。光栅化阶段会以更高画质合成。
         if embed_badge {
             let uri = badge_data_uri(image)?;
-            let radius = DISK_RADIUS * scale;
+            let radius = disk_radius * scale;
             let _ = write!(
                 svg,
                 "<defs><clipPath id=\"dy-center-clip\"><circle cx=\"{}\" cy=\"{}\" r=\"{}\"/>\
@@ -492,7 +516,7 @@ fn rasterize(encoded: &EncodedCode, options: &RenderOptions) -> Result<(Vec<u8>,
     );
 
     if let Some(center_image) = options.center_image.as_ref() {
-        let diameter = ((DISK_RADIUS * 2.0 * scale).round() as u32).max(1);
+        let diameter = ((center_disk_radius(encoded) * 2.0 * scale).round() as u32).max(1);
         let image = circular_image(center_image, diameter)?;
         let center = size as f64 / 2.0;
         let left = (center - diameter as f64 / 2.0).round() as i32;
@@ -1377,6 +1401,47 @@ mod tests {
         let gray = image::load_from_memory(&png).expect("valid png").to_luma8();
         let decoded = crate::dy::decode_gray_detailed(&gray).expect("decodable");
         assert_eq!(decoded.text, text);
+    }
+
+    #[test]
+    fn five_ring_code_renders_and_decodes() {
+        let text = "x".repeat(51);
+        let encoded = encode_text(
+            &text,
+            EncodeOptions {
+                format_code: Some(6),
+                ..EncodeOptions::default()
+            },
+        )
+        .expect("encodable");
+        assert_eq!(encoded.rings.len(), 5);
+
+        let png = render_png(&encoded, &RenderOptions::default()).expect("renderable");
+        let gray = image::load_from_memory(&png).expect("valid png").to_luma8();
+        let decoded = crate::dy::decode_gray_detailed(&gray).expect("decodable");
+        assert_eq!(decoded.text, text);
+    }
+
+    #[test]
+    fn five_ring_uses_smaller_disk_and_background_gap() {
+        let encoded = encode_text(
+            &"x".repeat(51),
+            EncodeOptions {
+                format_code: Some(6),
+                ..EncodeOptions::default()
+            },
+        )
+        .expect("encodable");
+        let svg = render_svg(&encoded, &RenderOptions::default()).expect("svg");
+        let expected = svg_number(DISK_RADIUS_5 * DEFAULT_SCALE);
+        assert!(
+            svg.contains(&format!("r=\"{expected}\" fill=\"#161823\"")),
+            "five-ring disk should use the smaller radius"
+        );
+        assert!(
+            svg.contains(&format!("r=\"{}\" fill=\"none\" stroke=\"#ffffff\"", svg_number((DISK_RADIUS_5 + 0.5) * DEFAULT_SCALE))),
+            "five-ring disk should be separated from the innermost ring"
+        );
     }
 
     #[test]

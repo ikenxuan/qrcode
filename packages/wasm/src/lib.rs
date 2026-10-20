@@ -383,7 +383,7 @@ fn dy_settings(options: JsValue) -> Result<(String, EncodeOptions, RenderOptions
         badge_image: opts.badge_image,
     };
     let encode = EncodeOptions {
-        format_code: opts.format_code.unwrap_or(5) as usize,
+        format_code: opts.format_code.map(|value| value as usize),
         param: opts.param.unwrap_or(20) as usize,
         field_xor: opts.field_xor.unwrap_or(true),
     };
@@ -395,7 +395,9 @@ fn dy_settings(options: JsValue) -> Result<(String, EncodeOptions, RenderOptions
 ///
 /// 默认复刻官方作品分享码版式：深色中心圆盘、四条数据环、三个定位圆环、
 /// 四段外框装饰弧和中心播放图标。默认格式码 5、参数 20（掩码 4），
-/// 消息容量 40 字节，UTF-8 文本最多 38 字节。
+/// 消息容量 40 字节，UTF-8 文本最多 38 字节；更长的文本（最多 51 字节）
+/// 会自动改用格式码 6 的五环版式。也可以通过 `formatCode` 显式指定
+/// 4（三环）、5（四环）或 6（五环）。
 ///
 /// 可通过 `size` / `scale` / `margin` / `darkColor` / `lightColor` /
 /// `transparent` / `moduleStyle` / `moduleRadius` / `frame` / `frameStyle` /

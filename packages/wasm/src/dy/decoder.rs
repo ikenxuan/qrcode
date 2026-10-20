@@ -3,11 +3,11 @@
 //! 处理流程
 //! --------
 //! 1. 找到码的几何锚点，推导模块尺度；
-//! 2. 采样四条各 120 个模块的数据环；
+//! 2. 采样五条各 120 个模块的数据环（四环版式忽略多出的第五条）；
 //! 3. 搜索 120 种旋转角和两种遍历方向；
-//! 4. 读取环 0 的 15 位格式字段和环 1 的 18 位参数字段；
+//! 4. 读取环 0 的 15 位格式字段，按格式码确定环数，再读环 1 的 18 位参数字段；
 //! 5. 解扰数据模块，得到字节流；
-//! 6. 按格式码选择 RS 布局并纠错；
+//! 6. 按格式码选择 RS 布局并纠错（格式码 6 的部分布局含两个块组）；
 //! 7. 解析 QR 风格的位流（模式 / 长度 / 载荷）得到文本。
 
 use image::GrayImage;
@@ -15,39 +15,47 @@ use image::GrayImage;
 use super::detect::{locator_candidates, sample_rings, scale_grid, Locator};
 use super::gf256::rs_correct;
 use super::layout::{
-    decode_field18, decode_format, descriptor_total, layout_data, mask_predicate, rs_layouts,
-    scrambled_positions, RING_MODULES, RING_RADII, RSDescriptor,
+    decode_field18, decode_format, descriptor_total, layout_for_format, mask_predicate, rs_layouts,
+    scrambled_positions, DataLayout, RSDescriptor, RSGroup, RING_MODULES, RING_RADII_5,
 };
 
 /// 把采样得到的环旋转/翻转到解码方向。
 fn reindex_rings(
-    rings: &[[u8; RING_MODULES]; 4],
+    rings: &[[u8; RING_MODULES]],
     rotation: usize,
     reverse: bool,
-) -> [[u8; RING_MODULES]; 4] {
-    let mut out = [[0u8; RING_MODULES]; 4];
-    for (ring_index, ring) in rings.iter().enumerate() {
-        for (i, value) in out[ring_index].iter_mut().enumerate() {
-            let index = if reverse {
-                (rotation + RING_MODULES - i) % RING_MODULES
-            } else {
-                (i + rotation) % RING_MODULES
-            };
-            *value = ring[index];
-        }
-    }
-    out
+) -> Vec<[u8; RING_MODULES]> {
+    rings
+        .iter()
+        .map(|ring| {
+            let mut out = [0u8; RING_MODULES];
+            for (i, value) in out.iter_mut().enumerate() {
+                let index = if reverse {
+                    (rotation + RING_MODULES - i) % RING_MODULES
+                } else {
+                    (i + rotation) % RING_MODULES
+                };
+                *value = ring[index];
+            }
+            out
+        })
+        .collect()
 }
 
 /// 解扰数据模块，得到传输字节流。
-fn unpack_payload(rings: &[[u8; RING_MODULES]; 4], mask_id: usize) -> Vec<u8> {
-    let layout = layout_data();
-    let mut out = Vec::with_capacity(52);
+fn unpack_payload(
+    rings: &[[u8; RING_MODULES]],
+    mask_id: usize,
+    layout: &DataLayout,
+) -> Vec<u8> {
+    let mut out = Vec::with_capacity(layout.capacity);
     let mut current = 0u16;
     let mut nbits = 0usize;
 
-    for (ring, w) in scrambled_positions(mask_id) {
-        if layout.masks[ring][w] == 0 {
+    for (ring, w) in
+        scrambled_positions(mask_id, layout.ring_count, layout.modules_per_ring)
+    {
+        if ring >= rings.len() || layout.masks[ring][w] == 0 {
             continue;
         }
         let mut bit = rings[ring][w] & 1;
@@ -65,49 +73,96 @@ fn unpack_payload(rings: &[[u8; RING_MODULES]; 4], mask_id: usize) -> Vec<u8> {
     out
 }
 
-/// 按给定描述符对载荷做 RS 纠错，成功时返回 `(message, errors)`。
-fn correct_payload(payload: &[u8], descriptor: &RSDescriptor) -> Option<(Vec<u8>, usize)> {
-    let total = descriptor_total(descriptor);
-    if payload.len() < total {
-        return None;
+/// 返回一个块组的可能分块方式（连续存放或字节交织）。
+fn group_arrangements(segment: &[u8], group: RSGroup) -> Vec<Vec<Vec<u8>>> {
+    let size = group.data + group.ecc;
+    if group.blocks == 1 {
+        return vec![vec![segment[..size].to_vec()]];
     }
 
-    let arrangements: Vec<Vec<Vec<u8>>> = if descriptor.blocks == 1 {
-        vec![vec![payload[..total].to_vec()]]
-    } else {
-        let size = descriptor.data + descriptor.ecc;
-        // 方式 A：每个完整码字连续存放。
-        let contiguous = (0..descriptor.blocks)
-            .map(|block| payload[block * size..(block + 1) * size].to_vec())
-            .collect();
-        // 方式 B：字节在多个块之间交织。
-        let mut interleaved = vec![vec![0u8; size]; descriptor.blocks];
-        for i in 0..size {
-            for block in 0..descriptor.blocks {
-                interleaved[block][i] = payload[i * descriptor.blocks + block];
+    // 方式 A：每个完整码字连续存放。
+    let contiguous = (0..group.blocks)
+        .map(|block| segment[block * size..(block + 1) * size].to_vec())
+        .collect();
+    // 方式 B：字节在多个块之间交织。
+    let mut interleaved = vec![vec![0u8; size]; group.blocks];
+    for i in 0..size {
+        for block in 0..group.blocks {
+            interleaved[block][i] = segment[i * group.blocks + block];
+        }
+    }
+    vec![contiguous, interleaved]
+}
+
+/// 返回描述符对应的所有可能分块方式。
+///
+/// 一个描述符可能包含多个块组（格式码 6 的后两种布局）。
+/// 每个块组内部再尝试连续存放和字节交织两种排列。
+fn split_blocks(payload: &[u8], descriptor: &RSDescriptor) -> Vec<Vec<Vec<u8>>> {
+    let groups: Vec<RSGroup> = descriptor.groups().collect();
+    let mut segments: Vec<&[u8]> = Vec::with_capacity(groups.len());
+    let mut offset = 0usize;
+    for group in &groups {
+        let total = group.blocks * (group.data + group.ecc);
+        if offset + total > payload.len() {
+            return Vec::new();
+        }
+        segments.push(&payload[offset..offset + total]);
+        offset += total;
+    }
+
+    let mut combinations: Vec<Vec<Vec<Vec<u8>>>> = vec![Vec::new()];
+    for (group, segment) in groups.iter().zip(segments) {
+        let arrangements = group_arrangements(segment, *group);
+        let mut next = Vec::new();
+        for combination in &combinations {
+            for arrangement in &arrangements {
+                let mut merged = combination.clone();
+                merged.push(arrangement.clone());
+                next.push(merged);
             }
         }
-        vec![contiguous, interleaved]
-    };
+        combinations = next;
+    }
 
-    for blocks in arrangements {
-        let mut parts: Vec<Vec<u8>> = Vec::with_capacity(blocks.len());
+    combinations
+        .into_iter()
+        .map(|combination| combination.into_iter().flatten().collect())
+        .collect()
+}
+
+/// 按给定描述符对载荷做 RS 纠错，成功时返回 `(message, errors)`。
+fn correct_payload(payload: &[u8], descriptor: &RSDescriptor) -> Option<(Vec<u8>, usize)> {
+    let groups: Vec<RSGroup> = descriptor.groups().collect();
+
+    for blocks in split_blocks(payload, descriptor) {
+        let mut parts: Vec<u8> = Vec::new();
         let mut total_errors = 0usize;
         let mut ok = true;
-        for block in &blocks {
-            match rs_correct(block, descriptor.ecc, 0) {
-                Ok((corrected, errors)) => {
-                    parts.push(corrected[..descriptor.data].to_vec());
-                    total_errors += errors;
-                }
-                Err(()) => {
-                    ok = false;
-                    break;
+        let mut block_index = 0usize;
+
+        for group in &groups {
+            for _ in 0..group.blocks {
+                let block = &blocks[block_index];
+                block_index += 1;
+                match rs_correct(block, group.ecc, 0) {
+                    Ok((corrected, errors)) => {
+                        parts.extend_from_slice(&corrected[..group.data]);
+                        total_errors += errors;
+                    }
+                    Err(()) => {
+                        ok = false;
+                        break;
+                    }
                 }
             }
+            if !ok {
+                break;
+            }
         }
+
         if ok {
-            return Some((parts.concat(), total_errors));
+            return Some((parts, total_errors));
         }
     }
     None
@@ -225,10 +280,18 @@ struct RingCandidate {
 }
 
 /// 解码一组已经定向的环（格式字段 + 载荷）。
-fn decode_rings(rings: &[[u8; RING_MODULES]; 4]) -> Option<RingCandidate> {
+fn decode_rings(rings: &[[u8; RING_MODULES]]) -> Option<RingCandidate> {
+    if rings.len() < 2 {
+        return None;
+    }
     let (format_code, _) = decode_format(&rings[0])?;
+    // 版本 5 的版式尚未实现；先跳过，避免误判。
+    let layout = layout_for_format(format_code)?;
+    if rings.len() < layout.ring_count {
+        return None;
+    }
     let (_, mask_id, _) = decode_field18(&rings[1])?;
-    let payload = unpack_payload(rings, mask_id);
+    let payload = unpack_payload(rings, mask_id, layout);
     Some(RingCandidate {
         format_code,
         mask_id,
@@ -244,6 +307,9 @@ struct CandidateDecode {
 /// 按格式码尝试所有 RS 布局，并解析 QR 位流。
 fn decode_candidate(candidate: &RingCandidate) -> Option<CandidateDecode> {
     for descriptor in rs_layouts(candidate.format_code) {
+        if descriptor_total(descriptor) > candidate.payload.len() {
+            continue;
+        }
         let Some((message, errors)) = correct_payload(&candidate.payload, descriptor) else {
             continue;
         };
@@ -263,7 +329,7 @@ pub struct DyDecode {
     pub text: String,
     /// 码心在原图中的坐标。
     pub center: (f64, f64),
-    /// 覆盖四条数据环的半径（含少量留白）。
+    /// 覆盖数据环的半径（含少量留白）。
     pub radius: f64,
     /// 定位点（原图坐标）。
     ///
@@ -343,7 +409,7 @@ fn decode_gray_impl(gray: &GrayImage) -> Option<DyDecode> {
             return Some(DyDecode {
                 text,
                 center: locator.center,
-                radius: RING_RADII[0] * scale * 1.08,
+                radius: RING_RADII_5[0] * scale * 1.08,
                 points: locator.points.clone(),
             });
         }
@@ -354,7 +420,7 @@ fn decode_gray_impl(gray: &GrayImage) -> Option<DyDecode> {
             return Some(DyDecode {
                 text,
                 center: locator.center,
-                radius: RING_RADII[0] * scale * 1.08,
+                radius: RING_RADII_5[0] * scale * 1.08,
                 points: locator.points.clone(),
             });
         }
@@ -363,7 +429,7 @@ fn decode_gray_impl(gray: &GrayImage) -> Option<DyDecode> {
             return Some(DyDecode {
                 text,
                 center: locator.center,
-                radius: RING_RADII[0] * scale * 1.08,
+                radius: RING_RADII_5[0] * scale * 1.08,
                 points: locator.points.clone(),
             });
         }
@@ -411,13 +477,10 @@ fn search_scales(
 ///
 /// 只截取环覆盖范围（含留白），因此即使整张截图很大，代价也只跟码的
 /// 像素尺寸有关。估计尺寸已经很大的码不需要放大，直接跳过。
-fn search_locator_upscaled(
-    gray: &GrayImage,
-    locator: &Locator,
-) -> Option<(String, f64)> {
+fn search_locator_upscaled(gray: &GrayImage, locator: &Locator) -> Option<(String, f64)> {
     const MAX_REGION_SIDE: f64 = 640.0;
 
-    let margin = RING_RADII[0] * locator.scale_base * (1.0 + locator.span) * 1.2;
+    let margin = RING_RADII_5[0] * locator.scale_base * (1.0 + locator.span) * 1.2;
     let side = margin * 2.0;
     if !(32.0..=MAX_REGION_SIDE).contains(&side) {
         return None;
@@ -467,35 +530,37 @@ fn search_locator_upscaled(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dy::encoder::{encode_text, EncodeOptions};
+    use crate::dy::layout::{
+        bits_to_int, data_valid_masks, layout_for_format, mask_predicate, scrambled_positions,
+        CW18, FIELD18_FALLBACK_XOR, FORMAT_CODEWORDS, FORMAT_XOR, RING_MODULES, STRUCT_BITS,
+    };
 
     #[test]
     fn reads_known_bitstream() {
         // 用编码器生成的消息验证字节模式解析。
-        let encoded =
-            crate::dy::encode_text("https://bing.com", crate::dy::EncodeOptions::default())
-                .expect("encodable");
+        let encoded = encode_text("https://bing.com", EncodeOptions::default()).expect("encodable");
         assert_eq!(
             parse_qr_bitstream(&encoded.message).unwrap(),
             "https://bing.com"
         );
     }
 
-    #[test]
-    fn decodes_synthetic_rings() {
-        use super::super::layout::{
-            bits_to_int, layout_data, mask_predicate, scrambled_positions, CW18, FIELD18_FALLBACK_XOR,
-            FORMAT_CODEWORDS, FORMAT_XOR, RING_MODULES, STRUCT_BITS,
-        };
+    /// 按编码器的规则手工搭出一组环，验证解码链路本身。
+    fn synthetic_rings(text: &str, format_code: usize, param: usize) -> Vec<[u8; RING_MODULES]> {
+        let encoded = encode_text(
+            text,
+            EncodeOptions {
+                format_code: Some(format_code),
+                param,
+                field_xor: true,
+            },
+        )
+        .expect("encodable");
+        let layout = layout_for_format(format_code).expect("layout");
+        let mask_id = param & 0x0f;
 
-        let payload = crate::dy::encode_text("https://bing.com", crate::dy::EncodeOptions::default())
-            .expect("encodable")
-            .payload;
-        let format_code = 5usize;
-        let param = 20usize;
-        let mask_id = 4usize;
-
-        let layout = layout_data();
-        let mut rings = STRUCT_BITS;
+        let mut rings = STRUCT_BITS[..layout.ring_count].to_vec();
         let value15 = FORMAT_CODEWORDS[format_code - 1] ^ FORMAT_XOR;
         for (i, &pos) in layout.format_positions.iter().enumerate() {
             rings[0][pos] = ((value15 >> (layout.format_positions.len() - 1 - i)) & 1) as u8;
@@ -505,8 +570,11 @@ mod tests {
             rings[1][pos] = ((value18 >> (layout.field_positions.len() - 1 - i)) & 1) as u8;
         }
 
+        let payload = &encoded.payload;
         let mut index = 0usize;
-        for (ring, w) in scrambled_positions(mask_id) {
+        for (ring, w) in
+            scrambled_positions(mask_id, layout.ring_count, layout.modules_per_ring)
+        {
             if layout.masks[ring][w] == 0 {
                 continue;
             }
@@ -516,16 +584,39 @@ mod tests {
                 0
             };
             index += 1;
-            rings[ring][w] = if mask_predicate(mask_id, w) == 0 { bit ^ 1 } else { bit };
+            rings[ring][w] = if mask_predicate(mask_id, w) == 0 {
+                bit ^ 1
+            } else {
+                bit
+            };
         }
+        rings
+    }
 
+    #[test]
+    fn decodes_synthetic_four_ring_code() {
+        let rings = synthetic_rings("https://bing.com", 5, 20);
         let candidate = decode_rings(&rings).expect("rings decode");
-        assert_eq!(candidate.format_code, format_code);
-        assert_eq!(candidate.mask_id, mask_id);
+        assert_eq!(candidate.format_code, 5);
+        assert_eq!(candidate.mask_id, 4);
         let decoded = decode_candidate(&candidate).expect("candidate decode");
         assert_eq!(decoded.text, "https://bing.com");
         assert_eq!(decoded.errors, 0);
+        let layout = data_valid_masks();
+        let value18 = CW18[20] ^ FIELD18_FALLBACK_XOR;
         assert_eq!(bits_to_int(&rings[1], &layout.field_positions), value18);
-        assert_eq!(RING_MODULES, 120);
+    }
+
+    #[test]
+    fn decodes_synthetic_five_ring_code() {
+        let text = "x".repeat(51);
+        let rings = synthetic_rings(&text, 6, 20);
+        assert_eq!(rings.len(), 5);
+        let candidate = decode_rings(&rings).expect("rings decode");
+        assert_eq!(candidate.format_code, 6);
+        assert_eq!(candidate.payload.len(), 67);
+        let decoded = decode_candidate(&candidate).expect("candidate decode");
+        assert_eq!(decoded.text, text);
+        assert_eq!(decoded.errors, 0);
     }
 }

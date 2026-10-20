@@ -129,8 +129,11 @@ const text = await scan(png);
 //    ^?
 ```
 
-默认布局最多写入 **38 字节** UTF-8 文本（约 12 个汉字），超出会抛出 `文本过长`。同步版本为
+抖音码默认使用四环版式，最多写入 **38 字节** UTF-8 文本（约 12 个汉字）。更长的文本会自动改用
+五环版式，上限 **51 字节**（约 17 个汉字）；超过 51 字节会抛出 `文本过长`。同步版本为
 `generateDySync(options, format?, encoding?)`，`@ikenxuan/qrcode/browser` 入口也导出同名方法。
+
+需要固定环数时传入 `formatCode`：`4` 为三环、`5` 为四环、`6` 为五环。
 
 需要 SVG 字符串时使用 `generateDySvg()` / `generateDySvgSync()`；右上角图片会以
 data URI 内嵌，方便直接写入 DOM 或继续编辑。

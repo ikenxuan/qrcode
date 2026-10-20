@@ -12,7 +12,7 @@ use std::collections::VecDeque;
 
 use image::GrayImage;
 
-use super::layout::{DISK_RADIUS, RING_MODULES, RING_RADII};
+use super::layout::{DISK_RADIUS, MAX_RINGS, RING_MODULES, RING_RADII_5};
 
 /// 码心到定位圆环中心的距离（设计单位）。
 pub const FINDER_DISTANCE: f64 = 100.0;
@@ -624,10 +624,18 @@ pub fn sample_ring(
         .collect()
 }
 
-/// 按当前尺度采样四条数据环。
-pub fn sample_rings(gray: &GrayImage, cx: f64, cy: f64, scale: f64) -> [[u8; RING_MODULES]; 4] {
-    let mut rings = [[0u8; RING_MODULES]; 4];
-    for (ring, &ring_radius) in rings.iter_mut().zip(RING_RADII.iter()) {
+/// 按当前尺度采样数据环。
+///
+/// 固定采样五条环：四环版式会忽略多出的第五条，五环版式（格式码 6）
+/// 则需要它。每条环的模块数由版本决定，版本 3 为 120。
+pub fn sample_rings(
+    gray: &GrayImage,
+    cx: f64,
+    cy: f64,
+    scale: f64,
+) -> [[u8; RING_MODULES]; MAX_RINGS] {
+    let mut rings = [[0u8; RING_MODULES]; MAX_RINGS];
+    for (ring, &ring_radius) in rings.iter_mut().zip(RING_RADII_5.iter()) {
         let sampled = sample_ring(gray, cx, cy, ring_radius * scale, RING_MODULES, 1.8, 7);
         ring.copy_from_slice(&sampled);
     }
