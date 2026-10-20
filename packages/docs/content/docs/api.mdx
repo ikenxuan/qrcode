@@ -11,19 +11,24 @@ description: 函数、类型、配置项与枚举值完整说明。
 import {
   generate,
   generateSvg,
+  generateDy,
   scan,
   generateSync,
   generateSvgSync,
+  generateDySync,
   scanSync,
   DotType,
   CornerSquareType,
   CornerDotType,
   ShapeType,
   OutputFormat,
+  DyModuleStyle,
+  DyFrameStyle,
 } from '@ikenxuan/qrcode';
 
 import type {
   QRCodeOptions,
+  DyCodeOptions,
   Encoding,
   GenerateResult,
   Gradient,
@@ -63,6 +68,29 @@ import type { QRCodeOptions } from '@ikenxuan/qrcode';
 declare function generateSvg(options: QRCodeOptions): Promise<string>;
 ```
 
+## generateDy
+
+生成抖音码。抖音码（`BEF_CODE_TYPE_DY_CODE`）是抖音平台下发的圆形码，
+默认参数复刻官方作品分享码版式。
+
+```ts twoslash title="generate-dy-signature.ts"
+import type { DyCodeOptions, Encoding, GenerateResult, OutputFormat } from '@ikenxuan/qrcode';
+
+declare function generateDy<E extends Encoding = 'binary'>(
+  options: DyCodeOptions,
+  format?: OutputFormat,
+  encoding?: E,
+): Promise<GenerateResult<E>>;
+
+declare function generateDySvg(options: DyCodeOptions): Promise<string>;
+```
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `options` | `DyCodeOptions` | 内容、尺寸、颜色、透明背景、模块形状与圆角、外框、中心图标和右上角图片。 |
+| `format` | `OutputFormat` | 输出格式，支持 `'png'`、`'jpeg'`、`'webp'`、`'svg'`，默认 `'png'`。 |
+| `encoding` | `'binary' \| 'base64'` | 输出编码，默认 `'binary'`。`generateDySvg` 直接返回字符串。 |
+
 ## scan
 
 ```ts twoslash title="scan-signature.ts"
@@ -74,7 +102,7 @@ declare function scan(imageData: Uint8Array): Promise<string | null>;
 同步 API 从默认入口导出，直接在当前线程调用 WASM：
 
 ```ts twoslash title="sync-signatures.ts"
-import type { Encoding, GenerateResult, OutputFormat, QRCodeOptions } from '@ikenxuan/qrcode';
+import type { DyCodeOptions, Encoding, GenerateResult, OutputFormat, QRCodeOptions } from '@ikenxuan/qrcode';
 
 declare function generateSync<E extends Encoding = 'binary'>(
   options: QRCodeOptions,
@@ -83,6 +111,14 @@ declare function generateSync<E extends Encoding = 'binary'>(
 ): GenerateResult<E>;
 
 declare function generateSvgSync(options: QRCodeOptions): string;
+
+declare function generateDySync<E extends Encoding = 'binary'>(
+  options: DyCodeOptions,
+  format?: OutputFormat,
+  encoding?: E,
+): GenerateResult<E>;
+
+declare function generateDySvgSync(options: DyCodeOptions): string;
 
 declare function scanSync(imageData: Uint8Array): string | null;
 ```
@@ -96,15 +132,20 @@ declare function scanSync(imageData: Uint8Array): string | null;
 import {
   generate,
   generateSvg,
+  generateDy,
+  generateDySvg,
   scan,
 } from '@ikenxuan/qrcode/browser';
 
 const png = await generate({ data: 'https://example.com' }, 'png');
 const svg = await generateSvg({ data: 'https://example.com' });
+const dyPng = await generateDy({ data: 'https://v.douyin.com/utbKgTJRmlI/' }, 'png');
+const dySvg = await generateDySvg({ data: 'https://v.douyin.com/utbKgTJRmlI/' });
 const text = await scan(png);
 
 png;
 svg;
+dyPng;
 text;
 ```
 
@@ -161,6 +202,52 @@ options;
 | `backgroundOptions` | 背景色、透明背景、背景渐变和圆角。 |
 | `image` | Logo 图片二进制数据。 |
 | `imageOptions` | Logo 尺寸、留白、圆角和背景点阵处理。 |
+
+## DyCodeOptions
+
+```ts twoslash title="dy-options.ts"
+import type { DyCodeOptions } from '@ikenxuan/qrcode';
+
+const options: DyCodeOptions = {
+  data: 'https://v.douyin.com/utbKgTJRmlI/',
+  size: 400,
+  darkColor: '#161823',
+  lightColor: '#ffffff',
+  moduleStyle: 'rounded',
+};
+
+options;
+// ^?
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `data` | `string` | — | 要编码的内容，UTF-8 最多 38 字节。 |
+| `size` | `number` | 自动 | 输出图片边长（像素）；提供后会反推 `scale`。 |
+| `scale` | `number` | `1.833` | 每个设计单位对应的像素数。 |
+| `margin` | `number` | `16` | 图片边距（像素）。 |
+| `darkColor` | `CSSColor` | `#161823` | 数据环、定位环、外框和中心圆盘颜色。 |
+| `lightColor` | `CSSColor` | `#ffffff` | 背景和中心图标颜色。 |
+| `moduleStyle` | `DyModuleStyle` | `'rounded'` | 数据模块形状。 |
+| `moduleRadius` | `number` | `1.2` | `rounded` 模式的圆角半径（设计单位）。 |
+| `frame` | `boolean` | `true` | 是否绘制外圈装饰。 |
+| `frameStyle` | `DyFrameStyle` | `'arcs'` | 外圈样式：`arcs` / `ring` / `dashes` / `dots` / `ticks` / `double` / `segments` / `spark` / `orbit` / `gear`。 |
+| `frameWidth` | `number` | `9` | 外圈径向宽度（设计单位），范围 `1` ~ `16`。 |
+| `frameRadius` | `number` | `0` | 外圈端点圆角（设计单位）；圆环类样式在缺口处同样生效。 |
+| `frameSpan` | `number` | `64` | `arcs` 样式每段弧的角度，范围 `4` ~ `120`。 |
+| `frameCount` | `number` | `24` | `dashes` / `dots` / `ticks` 的元素数量，范围 `4` ~ `120`。 |
+| `logo` | `boolean` | `true` | 是否绘制中心播放图标；提供 `centerImage` 时自动由图片替代。 |
+| `centerImage` | `Uint8Array` | — | 覆盖整个中心圆盘的图片二进制，居中裁剪成圆形。 |
+| `badge` | `boolean` | `true` | 是否启用右上角图片槽位。 |
+| `badgeImage` | `Uint8Array` | — | 右上角圆形图片二进制；未提供时槽位留空。 |
+| `formatCode` | `number` | `5` | 格式码 1..6，决定 RS 布局。 |
+| `param` | `number` | `20` | 参数 0..63，低 4 位是掩码 id。 |
+| `fieldXor` | `boolean` | `true` | 参数字段是否使用 `0x25412` 异或形式。 |
+
+<Callout type="info">
+  默认布局使用 RS(52,40)：40 字节消息，UTF-8 文本最多 38 字节。其他格式码会选用
+  第一个能放入 52 字节传输码字的 RS 布局，容量更小。
+</Callout>
 
 ## ImageOptions
 
@@ -220,6 +307,19 @@ options.imageOptions;
 | `CornerDotType.Dot` | `'dot'` |
 | `ShapeType.Square` | `'square'` |
 | `ShapeType.Circle` | `'circle'` |
+| `DyModuleStyle.Rounded` | `'rounded'` |
+| `DyModuleStyle.Square` | `'square'` |
+| `DyModuleStyle.Pill` | `'pill'` |
+| `DyFrameStyle.Arcs` | `'arcs'` |
+| `DyFrameStyle.Ring` | `'ring'` |
+| `DyFrameStyle.Dashes` | `'dashes'` |
+| `DyFrameStyle.Dots` | `'dots'` |
+| `DyFrameStyle.Ticks` | `'ticks'` |
+| `DyFrameStyle.Double` | `'double'` |
+| `DyFrameStyle.Segments` | `'segments'` |
+| `DyFrameStyle.Spark` | `'spark'` |
+| `DyFrameStyle.Orbit` | `'orbit'` |
+| `DyFrameStyle.Gear` | `'gear'` |
 
 ## 颜色格式
 

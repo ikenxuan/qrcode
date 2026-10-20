@@ -1,5 +1,5 @@
-import { generateSync, generateSvgSync, scanSync, scanDetailedSync } from './sync.js'
-import type { Encoding, OutputFormat, QRCodeOptions } from './types.js'
+import { generateSync, generateSvgSync, generateDySync, generateDySvgSync, scanSync, scanDetailedSync } from './sync.js'
+import type { DyCodeOptions, Encoding, OutputFormat, QRCodeOptions } from './types.js'
 
 type BrowserWorkerRequest =
   | {
@@ -13,6 +13,18 @@ type BrowserWorkerRequest =
     id: number
     method: 'generateSvg'
     options: QRCodeOptions
+  }
+  | {
+    id: number
+    method: 'generateDy'
+    options: DyCodeOptions
+    format: OutputFormat
+    encoding?: Encoding
+  }
+  | {
+    id: number
+    method: 'generateDySvg'
+    options: DyCodeOptions
   }
   | {
     id: number
@@ -76,6 +88,15 @@ workerScope.addEventListener('message', (event) => {
         break
       case 'generateSvg':
         postSuccess(request.id, generateSvgSync(request.options))
+        break
+      case 'generateDy':
+        postSuccess(
+          request.id,
+          generateDySync(request.options, request.format, request.encoding),
+        )
+        break
+      case 'generateDySvg':
+        postSuccess(request.id, generateDySvgSync(request.options))
         break
       case 'scan':
         postSuccess(request.id, scanSync(request.imageData))

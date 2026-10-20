@@ -1,5 +1,5 @@
-import { generate as _generate, generateSvg as _generateSvg, scan as _scan, scanDetailed as _scanDetailed } from '@ikenxuan/qrcode-wasm'
-import type { Encoding, GenerateResult, OutputFormat, QRCodeOptions, ScanDetails } from './types.js'
+import { generate as _generate, generateSvg as _generateSvg, generateDy as _generateDy, generateDySvg as _generateDySvg, scan as _scan, scanDetailed as _scanDetailed } from '@ikenxuan/qrcode-wasm'
+import type { DyCodeOptions, Encoding, GenerateResult, OutputFormat, QRCodeOptions, ScanDetails } from './types.js'
 
 const toBase64 = (buf: Uint8Array<ArrayBuffer>): string => {
   let binary = ''
@@ -49,6 +49,45 @@ export const generateSync = <E extends Encoding = 'binary'> (
  */
 export const generateSvgSync = (options: QRCodeOptions): string => {
   return _generateSvg(options)
+}
+
+/**
+ * 同步生成抖音码。
+ *
+ * @remarks
+ * 抖音码是抖音平台下发的圆形码，默认参数复刻官方作品分享码版式：
+ * 深色中心圆盘、四条数据环、三个定位圆环、外圈装饰弧和中心播放图标。
+ * 生成的图片可被 {@link scanSync} 解回原文。
+ *
+ * @example
+ * ```ts
+ * import { generateDySync } from '@ikenxuan/qrcode'
+ *
+ * const png = generateDySync({ data: 'https://v.douyin.com/utbKgTJRmlI/' }, 'png')
+ * ```
+ *
+ * @param options - 抖音码生成配置。
+ * @param format - 输出格式，支持 `'png'`、`'jpeg'`、`'webp'`、`'svg'`，默认 `'png'`。
+ * @param encoding - 编码方式，默认 `'binary'`。
+ * @returns 根据 encoding 返回 `Uint8Array`（binary）或 base64 `string`。
+ */
+export const generateDySync = <E extends Encoding = 'binary'> (
+  options: DyCodeOptions,
+  format: OutputFormat = 'png',
+  encoding?: E,
+): GenerateResult<E> => {
+  const buf = _generateDy(options, format) as Uint8Array<ArrayBuffer>
+  return (encoding === 'base64' ? toBase64(buf) : buf) as GenerateResult<E>
+}
+
+/**
+ * 同步生成抖音码 SVG 字符串。
+ *
+ * @param options - 抖音码生成配置。
+ * @returns SVG 字符串；右上角图片会以 data URI 内嵌。
+ */
+export const generateDySvgSync = (options: DyCodeOptions): string => {
+  return _generateDySvg(options)
 }
 
 /**

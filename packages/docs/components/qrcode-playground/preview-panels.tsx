@@ -49,6 +49,7 @@ function ScanOverlay({ details }: { details: ScanDetails }) {
 export function PreviewPanel({
   format,
   size,
+  isDy,
   byteLength,
   previewUrl,
   isRendering,
@@ -61,6 +62,7 @@ export function PreviewPanel({
 }: {
   format: OutputFormat;
   size: number;
+  isDy: boolean;
   byteLength: number;
   previewUrl: string;
   isRendering: boolean;
@@ -77,7 +79,7 @@ export function PreviewPanel({
         <div className="grid min-w-0 gap-1">
           <Card.Title className="flex items-center gap-2 text-xl">
             <SiRust aria-hidden className="text-rust" />
-            生成预览
+            {isDy ? '抖音码预览' : '生成预览'}
           </Card.Title>
           <Card.Description>
             {format.toUpperCase()} · {size}px · {formatMegabytes(byteLength)}
@@ -97,7 +99,7 @@ export function PreviewPanel({
           {previewUrl ? (
             // eslint-disable-next-line next/no-img-element -- Preview URL is generated in browser state.
             <img
-              alt="实时生成的二维码"
+              alt={isDy ? '实时生成的抖音码' : '实时生成的二维码'}
               className="h-auto max-h-60 w-full max-w-60 object-contain sm:max-h-75 sm:max-w-75"
               src={previewUrl}
             />

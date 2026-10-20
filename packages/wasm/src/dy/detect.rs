@@ -302,6 +302,124 @@ pub fn find_finders(
     })
 }
 
+/// 不依赖中心圆盘，直接在整张图中寻找三个定位圆环。
+///
+/// 中心换成自定义图片后，深色圆盘会消失，`find_finders` 依赖的白色圆盘
+/// 半径也会变成中心留白，无法再作为尺度参考。这里改为按形状挑选环形
+/// 连通域，再用“三个点近似正方形分布”筛选定位环。
+pub fn find_finders_global(gray: &GrayImage) -> Option<FinderResult> {
+    let (width, height) = gray.dimensions();
+    let min_side = width.min(height) as f64;
+    let dark = threshold_mask(gray, |value| value < 128);
+    let stats = connected_components(&dark, width as usize, height as usize);
+    let mut candidates: Vec<FinderCandidate> = Vec::new();
+
+    for stat in stats.iter().skip(1) {
+        if stat.x <= 1
+            || stat.y <= 1
+            || stat.x + stat.width >= width as i64 - 1
+            || stat.y + stat.height >= height as i64 - 1
+        {
+            continue;
+        }
+        let longest = stat.width.max(stat.height) as f64;
+        if !(0.035 * min_side <= longest && longest <= 0.13 * min_side) {
+            continue;
+        }
+        if stat.height == 0 {
+            continue;
+        }
+        let aspect = stat.width as f64 / stat.height as f64;
+        if !(0.6 <= aspect && aspect <= 1.6) {
+            continue;
+        }
+        let fill = stat.area as f64 / (stat.width * stat.height) as f64;
+        if !(0.3..=0.8).contains(&fill) {
+            continue;
+        }
+        candidates.push(FinderCandidate {
+            area: stat.area,
+            dist: 0.0,
+            x: stat.cx,
+            y: stat.cy,
+        });
+    }
+
+    if candidates.len() < 3 {
+        return None;
+    }
+
+    candidates.sort_by(|a, b| {
+        b.area
+            .cmp(&a.area)
+            .then_with(|| a.x.partial_cmp(&b.x).unwrap_or(Ordering::Equal))
+            .then_with(|| a.y.partial_cmp(&b.y).unwrap_or(Ordering::Equal))
+    });
+
+    let top = &candidates[..candidates.len().min(12)];
+    let mut best: Option<(u64, (f64, f64), f64, [(f64, f64); 3])> = None;
+
+    for i in 0..top.len() {
+        for j in (i + 1)..top.len() {
+            for k in (j + 1)..top.len() {
+                let trio = [top[i], top[j], top[k]];
+                let area_min = trio.iter().map(|item| item.area).min().unwrap_or(0);
+                let area_max = trio.iter().map(|item| item.area).max().unwrap_or(0);
+                if area_min == 0 || area_max > area_min * 2 {
+                    continue;
+                }
+                let points = [
+                    (trio[0].x, trio[0].y),
+                    (trio[1].x, trio[1].y),
+                    (trio[2].x, trio[2].y),
+                ];
+                let Some(cc) = circumcenter(&points) else {
+                    continue;
+                };
+                if cc.0 < 0.0 || cc.1 < 0.0 || cc.0 > width as f64 || cc.1 > height as f64 {
+                    continue;
+                }
+
+                let mut angles = [
+                    (points[0].1 - cc.1).atan2(points[0].0 - cc.0),
+                    (points[1].1 - cc.1).atan2(points[1].0 - cc.0),
+                    (points[2].1 - cc.1).atan2(points[2].0 - cc.0),
+                ];
+                angles.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+                let tau = std::f64::consts::TAU;
+                let gaps = [
+                    (angles[1] - angles[0]).rem_euclid(tau),
+                    (angles[2] - angles[1]).rem_euclid(tau),
+                    (angles[0] + tau - angles[2]).rem_euclid(tau),
+                ];
+                let min_gap = gaps.iter().copied().fold(f64::INFINITY, f64::min);
+                let max_gap = gaps.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                // 三个定位环在 45° / 135° / 225°，间隔约为 90°、90°、180°。
+                if min_gap < 60.0_f64.to_radians() || max_gap < 150.0_f64.to_radians() {
+                    continue;
+                }
+
+                let distance = trio
+                    .iter()
+                    .map(|item| (item.x - cc.0).hypot(item.y - cc.1))
+                    .sum::<f64>()
+                    / 3.0;
+                let score = trio.iter().map(|item| item.area).sum::<u64>();
+                if best.as_ref().is_none_or(|current| score > current.0) {
+                    best = Some((score, cc, distance, points));
+                }
+            }
+        }
+    }
+
+    let (_, center, distance, points) = best?;
+    Some(FinderResult {
+        center,
+        distance,
+        points,
+    })
+}
+
 /// 以 `base` 为中心、`+/- span` 为范围生成一组尺度因子。
 pub fn scale_grid(base: f64, steps: usize, span: f64) -> Vec<f64> {
     if steps <= 1 {
@@ -420,6 +538,23 @@ pub fn locator_candidates(gray: &GrayImage) -> Vec<Locator> {
             steps: 21,
             points: vec![(bx, by)],
         });
+    }
+
+    if let Some(finders) = find_finders_global(gray) {
+        let scale_base = finders.distance / FINDER_DISTANCE;
+        let duplicate = locators.iter().any(|locator| {
+            (locator.center.0 - finders.center.0).hypot(locator.center.1 - finders.center.1) < 2.0
+                && (locator.scale_base - scale_base).abs() < 0.05 * scale_base
+        });
+        if !duplicate {
+            locators.push(Locator {
+                center: finders.center,
+                scale_base,
+                span: 0.05,
+                steps: 21,
+                points: finders.points.to_vec(),
+            });
+        }
     }
 
     locators

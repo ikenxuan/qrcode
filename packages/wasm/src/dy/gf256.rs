@@ -93,6 +93,41 @@ pub fn syndromes(codeword: &[u8], nsym: usize, fcr: usize) -> Vec<u8> {
         .collect()
 }
 
+/// 返回 RS 生成多项式 `g(x) = ∏(x - a^(fcr+j))`（最高次项在前）。
+pub fn generator_poly(nsym: usize, fcr: usize) -> Vec<u8> {
+    let mut g = vec![1u8];
+    for j in 0..nsym {
+        let root = gf_pow(2, fcr + j);
+        let mut next = vec![0u8; g.len() + 1];
+        for (i, &coefficient) in g.iter().enumerate() {
+            next[i] ^= coefficient;
+            next[i + 1] ^= gf_mul(coefficient, root);
+        }
+        g = next;
+    }
+    g
+}
+
+/// 系统化 RS 编码：消息字节在前，`nsym` 个校验字节在后。
+pub fn rs_encode(message: &[u8], nsym: usize, fcr: usize) -> Vec<u8> {
+    let g = generator_poly(nsym, fcr);
+    let mut work = vec![0u8; message.len() + nsym];
+    work[..message.len()].copy_from_slice(message);
+    for i in 0..message.len() {
+        let coefficient = work[i];
+        if coefficient == 0 {
+            continue;
+        }
+        for (j, &g) in g.iter().enumerate() {
+            work[i + j] ^= gf_mul(g, coefficient);
+        }
+    }
+    let mut out = vec![0u8; message.len() + nsym];
+    out[..message.len()].copy_from_slice(message);
+    out[message.len()..].copy_from_slice(&work[work.len() - nsym..]);
+    out
+}
+
 /// 根据校验子求错误定位多项式（最低次项在前）。
 fn berlekamp_massey(synd: &[u8]) -> Vec<u8> {
     let mut lam = vec![1u8];
@@ -258,5 +293,25 @@ mod tests {
         let (corrected, errors) = rs_correct(&KNOWN_PAYLOAD, 12, 0).expect("clean");
         assert_eq!(errors, 0);
         assert_eq!(&corrected[..40], &KNOWN_MESSAGE);
+    }
+
+    #[test]
+    fn encoding_known_message_matches_official_payload() {
+        let encoded = rs_encode(&KNOWN_MESSAGE, 12, 0);
+        assert_eq!(encoded, KNOWN_PAYLOAD);
+    }
+
+    #[test]
+    fn encoding_then_correcting_round_trips() {
+        for count in 0..7 {
+            let mut damaged = rs_encode(&KNOWN_MESSAGE, 12, 0);
+            for i in 0..count {
+                let index = (i * 11 + 5) % damaged.len();
+                damaged[index] ^= 0x3c + i as u8;
+            }
+            let (corrected, errors) = rs_correct(&damaged, 12, 0).expect("correctable");
+            assert_eq!(errors, count);
+            assert_eq!(corrected, rs_encode(&KNOWN_MESSAGE, 12, 0));
+        }
     }
 }

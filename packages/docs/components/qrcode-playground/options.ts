@@ -1,5 +1,5 @@
-import { fallbackContent } from './constants';
-import type { QRCodeOptions, PlaygroundState } from './types';
+import { dyFallbackContent, fallbackContent } from './constants';
+import type { DyCodeOptions, PlaygroundState, QRCodeOptions } from './types';
 
 function colorOrGradient(useGradient: boolean, colorFrom: string, colorTo: string) {
   return useGradient
@@ -55,5 +55,36 @@ export function buildQRCodeOptions(state: PlaygroundState, logoBytes: Uint8Array
           },
         }
       : {}),
+  };
+}
+
+/** 构造抖音码生成配置；图片会放到右上角圆形槽位，中心图片会覆盖中心圆盘。 */
+export function buildDyOptions(
+  state: PlaygroundState,
+  badgeBytes: Uint8Array | null,
+  centerBytes: Uint8Array | null,
+): DyCodeOptions {
+  const data = state.content.trim() || dyFallbackContent;
+
+  return {
+    data,
+    size: state.dySize,
+    margin: state.dyMargin,
+    darkColor: state.dyDarkColor,
+    lightColor: state.dyLightColor,
+    transparent: state.dyTransparent,
+    moduleStyle: state.dyModuleStyle,
+    moduleRadius: state.dyModuleRadius,
+    frame: state.dyFrame,
+    frameStyle: state.dyFrameStyle,
+    frameWidth: state.dyFrameWidth,
+    frameRadius: state.dyFrameRadius,
+    frameSpan: state.dyFrameSpan,
+    frameCount: state.dyFrameCount,
+    logo: state.dyLogo,
+    badge: state.dyBadge,
+    badgeRadius: state.dyBadgeRadius,
+    ...(state.dyBadge && badgeBytes ? { badgeImage: badgeBytes } : {}),
+    ...(centerBytes ? { centerImage: centerBytes } : {}),
   };
 }

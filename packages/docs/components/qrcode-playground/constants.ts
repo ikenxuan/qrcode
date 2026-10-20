@@ -1,8 +1,14 @@
 import type {
   CodeSampleKey,
+  CodeType,
   CornerDotType,
   CornerSquareType,
   DotType,
+  DyFrameStyle,
+  DyModuleStyle,
+  DyPresetKey,
+  DyPresetOption,
+  DyPresetStyle,
   Encoding,
   OutputFormat,
   PlaygroundState,
@@ -14,6 +20,9 @@ import type {
 } from './types';
 
 export const fallbackContent = 'https://github.com/ikenxuan/qrcode';
+
+/** 切换到抖音码时使用的默认内容。 */
+export const dyFallbackContent = 'https://v.douyin.com/utbKgTJRmlI/';
 
 /** 预设与默认状态共用的外观基线。 */
 const presetDefaults: PresetStyle = {
@@ -43,11 +52,138 @@ const presetDefaults: PresetStyle = {
   hideBackgroundDots: true,
 };
 
+/** 标准二维码的默认外观；「恢复默认」会套用这份配置。 */
+export const qrDefaults: PresetStyle = presetDefaults;
+
+/** 抖音码的官方默认外观。 */
+export const dyDefaults = {
+  dySize: 432,
+  dyMargin: 16,
+  dyDarkColor: '#161823',
+  dyLightColor: '#ffffff',
+  dyTransparent: false,
+  dyModuleStyle: 'rounded' as DyModuleStyle,
+  dyModuleRadius: 1.2,
+  dyFrame: true,
+  dyFrameStyle: 'arcs' as DyFrameStyle,
+  dyFrameWidth: 9,
+  dyFrameRadius: 0,
+  dyFrameSpan: 64,
+  dyFrameCount: 24,
+  dyLogo: true,
+  dyBadge: true,
+  dyBadgeRadius: 21,
+};
+
+const createDyPreset = (
+  value: DyPresetKey,
+  label: string,
+  description: string,
+  overrides: Partial<DyPresetStyle>,
+): DyPresetOption => ({
+  value,
+  label,
+  description,
+  style: {
+    dySize: dyDefaults.dySize,
+    dyMargin: dyDefaults.dyMargin,
+    dyDarkColor: dyDefaults.dyDarkColor,
+    dyLightColor: dyDefaults.dyLightColor,
+    dyTransparent: dyDefaults.dyTransparent,
+    dyModuleStyle: dyDefaults.dyModuleStyle,
+    dyModuleRadius: dyDefaults.dyModuleRadius,
+    dyFrame: dyDefaults.dyFrame,
+    dyFrameStyle: dyDefaults.dyFrameStyle,
+    dyFrameWidth: dyDefaults.dyFrameWidth,
+    dyFrameRadius: dyDefaults.dyFrameRadius,
+    dyFrameSpan: dyDefaults.dyFrameSpan,
+    dyFrameCount: dyDefaults.dyFrameCount,
+    dyLogo: dyDefaults.dyLogo,
+    dyBadgeRadius: dyDefaults.dyBadgeRadius,
+    ...overrides,
+  },
+});
+
+/** 抖音码预设，全部保持深色模块 + 浅色背景，确保可扫描。 */
+export const dyPresetOptions: DyPresetOption[] = [
+  createDyPreset('official', '官方默认', '深墨前景、纯白背景，保留外圈装饰弧与中心播放图标。', {}),
+  createDyPreset('mono', '极简黑白', '纯黑方形模块，去掉装饰弧和播放图标，边界最清晰。', {
+    dySize: 400,
+    dyDarkColor: '#111827',
+    dyModuleStyle: 'square',
+    dyModuleRadius: 0,
+    dyFrame: false,
+    dyLogo: false,
+  }),
+  createDyPreset('transparent', '透明极简', '透明背景配深灰方形模块，可直接叠在任意底图上。', {
+    dySize: 400,
+    dyMargin: 0,
+    dyDarkColor: '#111827',
+    dyTransparent: true,
+    dyModuleStyle: 'square',
+    dyModuleRadius: 0,
+    dyFrame: false,
+    dyLogo: false,
+  }),
+  createDyPreset('ink', '水墨留白', '近黑前景配冷白背景，圆角模块与完整圆环外圈更克制。', {
+    dyMargin: 20,
+    dyDarkColor: '#1f2937',
+    dyLightColor: '#f8fafc',
+    dyFrameStyle: 'ring',
+    dyFrameWidth: 6,
+  }),
+  createDyPreset('ocean', '海盐蓝', '深蓝前景配浅蓝背景，断续弧段外圈，适合商务与产品页面。', {
+    dyDarkColor: '#1e3a8a',
+    dyLightColor: '#eff6ff',
+    dyFrameStyle: 'dashes',
+    dyFrameRadius: 2,
+    dyFrameCount: 28,
+  }),
+  createDyPreset('forest', '森林绿', '墨绿前景配薄荷背景，双层圆环外圈，清爽且对比充足。', {
+    dyDarkColor: '#14532d',
+    dyLightColor: '#ecfdf5',
+    dyFrameStyle: 'double',
+    dyFrameWidth: 10,
+  }),
+  createDyPreset('sakura', '樱花粉', '深玫红前景配浅粉背景，圆点串外圈，柔和但仍有足够对比。', {
+    dyDarkColor: '#831843',
+    dyLightColor: '#fdf2f8',
+    dyModuleStyle: 'pill',
+    dyFrameStyle: 'dots',
+    dyFrameCount: 32,
+  }),
+  createDyPreset('sunset', '落日橙', '深棕橙前景配暖白背景，刻度外圈，适合活动与短视频场景。', {
+    dyDarkColor: '#7c2d12',
+    dyLightColor: '#fff7ed',
+    dyModuleStyle: 'pill',
+    dyFrameStyle: 'ticks',
+    dyFrameCount: 36,
+  }),
+  createDyPreset('grape', '葡萄紫', '深紫前景配淡紫背景，细圆环外圈，适合创意与设计类项目。', {
+    dyDarkColor: '#4c1d95',
+    dyLightColor: '#f5f3ff',
+    dyFrameStyle: 'ring',
+    dyFrameWidth: 7,
+  }),
+  createDyPreset('high-contrast', '高对比黑白', '纯黑方形模块、纯白背景、更大留白，优先远距离识别。', {
+    dySize: 480,
+    dyMargin: 24,
+    dyDarkColor: '#000000',
+    dyLightColor: '#ffffff',
+    dyModuleStyle: 'square',
+    dyModuleRadius: 0,
+    dyFrame: false,
+    dyLogo: false,
+  }),
+];
+
 export const defaultPlaygroundState: PlaygroundState = {
+  codeType: 'qrcode',
   content: fallbackContent,
   format: 'png',
   encoding: 'binary',
   ...presetDefaults,
+  ...dyDefaults,
 };
 
 const createPreset = (
@@ -275,6 +411,19 @@ export const presetOptions: PresetOption[] = [
   }),
 ];
 
+export const codeTypes: Array<SelectOption<CodeType>> = [
+  {
+    label: '标准二维码',
+    value: 'qrcode',
+    description: '方阵 QR 码，支持完整样式系统、SVG 与多种位图格式。',
+  },
+  {
+    label: '抖音码',
+    value: 'dy',
+    description: '圆形抖音码，复刻官方默认版式，支持透明背景与多种输出格式，最多 38 字节文本。',
+  },
+];
+
 export const formats: Array<SelectOption<OutputFormat>> = [
   { label: 'PNG', value: 'png', description: '位图输出，适合网页和下载。Binary / base64 都可用。' },
   { label: 'WebP', value: 'webp', description: '更小的位图体积，适合现代浏览器。' },
@@ -299,6 +448,25 @@ export const dotTypes: Array<SelectOption<DotType>> = [
   { label: 'Classy', value: 'classy', description: '经典切角样式，点阵更有装饰感。' },
   { label: 'Classy Rounded', value: 'classy-rounded', description: '经典圆角样式，适合精致卡片或海报。' },
   { label: 'Extra Rounded', value: 'extra-rounded', description: '超圆角点阵，风格最强，建议搭配高对比配色。' },
+];
+
+export const dyModuleStyles: Array<SelectOption<DyModuleStyle>> = [
+  { label: 'Rounded', value: 'rounded', description: '官方默认，环形扇区带 1.2 单位圆角。' },
+  { label: 'Square', value: 'square', description: '直角环形扇区，边缘更硬朗。' },
+  { label: 'Pill', value: 'pill', description: '最大圆角，接近胶囊形。' },
+];
+
+export const dyFrameStyles: Array<SelectOption<DyFrameStyle>> = [
+  { label: '四段弧', value: 'arcs', description: '官方默认，四段圆弧留在 0° / 90° / 180° / 270°。' },
+  { label: '完整圆环', value: 'ring', description: '一圈圆环，在定位环和右上角图片处自动断开。' },
+  { label: '断续弧段', value: 'dashes', description: '均匀分布的短弧，自动避开定位环和右上角图片。' },
+  { label: '圆点串', value: 'dots', description: '沿圆周排列的圆点，轻盈活泼。' },
+  { label: '刻度线', value: 'ticks', description: '细密的径向刻度，像表盘一样强调方向感。' },
+  { label: '双层圆环', value: 'double', description: '内外两条同心圆环，同样在定位点和图片处断开。' },
+  { label: '分段圆环', value: 'segments', description: '较长弧段加细缝，接近断开的圆环。' },
+  { label: '长短弧', value: 'spark', description: '长短弧交替排列，节奏感更强。' },
+  { label: '双轨圆点', value: 'orbit', description: '内外两圈错位圆点，像行星轨道。' },
+  { label: '齿轮环', value: 'gear', description: '细圆环配内侧轮齿，机械感最强。' },
 ];
 
 export const cornerSquareTypes: Array<SelectOption<CornerSquareType>> = [

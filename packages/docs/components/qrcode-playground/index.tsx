@@ -6,7 +6,7 @@ import { createAnnotatedImage } from './annotate';
 import { buildCodeSamples } from './code-samples';
 import { defaultPlaygroundState, fileExtensions, mimeTypes } from './constants';
 import { HomeHero } from './home-hero';
-import { buildQRCodeOptions } from './options';
+import { buildDyOptions, buildQRCodeOptions } from './options';
 import { PlaygroundControls } from './playground-controls';
 import { CodeSamplePanel } from './code-sample-panel';
 import { PreviewPanel, UploadScanPanel } from './preview-panels';
@@ -18,6 +18,7 @@ export { HomeHero };
 export const QRCodePlayground = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const centerInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef('');
   const uploadPreviewUrlRef = useRef('');
   const renderVersionRef = useRef(0);
@@ -27,6 +28,11 @@ export const QRCodePlayground = () => {
   const [qr, setQr] = useState<QRCodeModule | null>(null);
   const [state, setState] = useState(defaultPlaygroundState);
   const [logo, setLogo] = useState<LogoState>({ bytes: null, name: '', previewUrl: '' });
+  const [centerImage, setCenterImage] = useState<LogoState>({
+    bytes: null,
+    name: '',
+    previewUrl: '',
+  });
   const [previewUrl, setPreviewUrl] = useState('');
   const [byteLength, setByteLength] = useState(0);
   const [isRendering, setIsRendering] = useState(false);
@@ -39,10 +45,20 @@ export const QRCodePlayground = () => {
   const [copiedCodeKey, setCopiedCodeKey] = useState<CodeSampleKey | ''>('');
 
   const hasLogo = logo.bytes !== null;
-  const options = useMemo(() => buildQRCodeOptions(state, logo.bytes), [logo.bytes, state]);
-  const codeSamples = useMemo(() => buildCodeSamples(state, hasLogo), [hasLogo, state]);
+  const hasCenterImage = centerImage.bytes !== null;
+  const isDy = state.codeType === 'dy';
+  const qrOptions = useMemo(() => buildQRCodeOptions(state, logo.bytes), [logo.bytes, state]);
+  const dyOptions = useMemo(
+    () => buildDyOptions(state, logo.bytes, centerImage.bytes),
+    [centerImage.bytes, logo.bytes, state],
+  );
+  const outputFormat = state.format;
+  const codeSamples = useMemo(
+    () => buildCodeSamples(state, hasLogo, hasCenterImage),
+    [hasCenterImage, hasLogo, state],
+  );
   const selectedSample = codeSamples.find((sample) => sample.key === selectedCodeKey) ?? codeSamples[0];
-  const mimeType = mimeTypes[state.format];
+  const mimeType = mimeTypes[outputFormat];
 
   useEffect(() => {
     let active = true;
@@ -74,18 +90,35 @@ export const QRCodePlayground = () => {
       try {
         let nextByteLength = 0;
 
-        if (state.format === 'svg') {
-          const svg = await qr.generateSvg(options);
+        if (isDy) {
+          if (state.format === 'svg') {
+            const svg = await qr.generateDySvg(dyOptions);
+            nextUrl = URL.createObjectURL(new Blob([svg], { type: mimeType }));
+            nextByteLength = new TextEncoder().encode(svg).length;
+          }
+          else if (state.encoding === 'base64') {
+            const image = await qr.generateDy(dyOptions, state.format, 'base64');
+            nextUrl = `data:${mimeType};base64,${image}`;
+            nextByteLength = base64ByteLength(image);
+          }
+          else {
+            const image = await qr.generateDy(dyOptions, state.format, 'binary');
+            nextUrl = URL.createObjectURL(new Blob([image], { type: mimeType }));
+            nextByteLength = image.length;
+          }
+        }
+        else if (state.format === 'svg') {
+          const svg = await qr.generateSvg(qrOptions);
           nextUrl = URL.createObjectURL(new Blob([svg], { type: mimeType }));
           nextByteLength = new TextEncoder().encode(svg).length;
         }
         else if (state.encoding === 'base64') {
-          const image = await qr.generate(options, state.format, 'base64');
+          const image = await qr.generate(qrOptions, state.format, 'base64');
           nextUrl = `data:${mimeType};base64,${image}`;
           nextByteLength = base64ByteLength(image);
         }
         else {
-          const image = await qr.generate(options, state.format, 'binary');
+          const image = await qr.generate(qrOptions, state.format, 'binary');
           nextUrl = URL.createObjectURL(new Blob([image], { type: mimeType }));
           nextByteLength = image.length;
         }
@@ -125,7 +158,7 @@ export const QRCodePlayground = () => {
       window.clearTimeout(renderDelay);
       if (!committed) revokeObjectUrl(nextUrl);
     };
-  }, [mimeType, options, qr, state.encoding, state.format]);
+  }, [dyOptions, isDy, mimeType, qr, qrOptions, state.encoding, state.format]);
 
   useEffect(() => {
     return () => {
@@ -140,6 +173,12 @@ export const QRCodePlayground = () => {
     };
   }, [logo.previewUrl]);
 
+  useEffect(() => {
+    return () => {
+      revokeObjectUrl(centerImage.previewUrl);
+    };
+  }, [centerImage.previewUrl]);
+
   const scanCurrent = async () => {
     if (!qr) return;
 
@@ -148,7 +187,9 @@ export const QRCodePlayground = () => {
     const scanVersion = ++currentScanVersionRef.current;
 
     try {
-      const image = await qr.generate(options, 'png', 'binary');
+      const image = isDy
+        ? await qr.generateDy(dyOptions, 'png', 'binary')
+        : await qr.generate(qrOptions, 'png', 'binary');
       const result = await qr.scan(image);
       if (scanVersion === currentScanVersionRef.current) {
         setScanResult(result ?? '未识别到二维码');
@@ -242,12 +283,36 @@ export const QRCodePlayground = () => {
     });
   };
 
+  const pickCenterImage = async (file: File | undefined) => {
+    if (!file) return;
+
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const preview = URL.createObjectURL(file);
+
+      setCenterImage((current) => {
+        revokeObjectUrl(current.previewUrl);
+        return { bytes, name: file.name, previewUrl: preview };
+      });
+    }
+    catch (reason) {
+      setError(reason instanceof Error ? reason.message : '读取中心图片失败');
+    }
+  };
+
+  const removeCenterImage = () => {
+    setCenterImage((current) => {
+      revokeObjectUrl(current.previewUrl);
+      return { bytes: null, name: '', previewUrl: '' };
+    });
+  };
+
   const downloadPreview = () => {
     if (!previewUrl) return;
 
     const anchor = document.createElement('a');
     anchor.href = previewUrl;
-    anchor.download = `ikenxuan-qrcode.${fileExtensions[state.format]}`;
+    anchor.download = `ikenxuan-${isDy ? 'douyin' : 'qrcode'}.${fileExtensions[state.format]}`;
     anchor.click();
   };
 
@@ -280,13 +345,19 @@ export const QRCodePlayground = () => {
 
           <Card.Content>
             <PlaygroundControls
+              centerImageInputRef={centerInputRef}
+              centerImageName={centerImage.name}
+              centerImagePreviewUrl={centerImage.previewUrl}
+              hasCenterImage={hasCenterImage}
               hasLogo={hasLogo}
               logoInputRef={logoInputRef}
               logoName={logo.name}
               logoPreviewUrl={logo.previewUrl}
               setState={setState}
               state={state}
+              onPickCenterImage={(file) => void pickCenterImage(file)}
               onPickLogo={(file) => void pickLogo(file)}
+              onRemoveCenterImage={removeCenterImage}
               onRemoveLogo={removeLogo}
             />
           </Card.Content>
@@ -298,11 +369,12 @@ export const QRCodePlayground = () => {
               byteLength={byteLength}
               copied={copiedCodeKey === selectedSample.key}
               error={error}
-              format={state.format}
+              format={outputFormat}
+              isDy={isDy}
               isRendering={isRendering}
               previewUrl={previewUrl}
               scanResult={scanResult}
-              size={state.size}
+              size={isDy ? state.dySize : state.size}
               onCopyCode={() => void copySample(selectedSample)}
               onDownload={downloadPreview}
               onScanCurrent={() => void scanCurrent()}

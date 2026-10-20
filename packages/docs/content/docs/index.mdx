@@ -14,7 +14,7 @@ TypeScript 封装层中，因此应用侧无需手动加载 `.wasm` 文件，也
 
 <Cards>
   <Card title="生成二维码" href="/docs/generate">
-    了解样式、输出格式、透明背景与 Logo 嵌入。
+    了解样式、输出格式、透明背景、Logo 嵌入与抖音码生成。
   </Card>
   <Card title="扫描二维码" href="/docs/scan">
     读取 PNG、JPEG、WebP 图片二进制并返回二维码内容。
@@ -60,7 +60,7 @@ bun add @ikenxuan/qrcode
 ## Node.js 异步调用
 
 ```ts twoslash title="quick-start.ts"
-import { generate, generateSvg, scan } from '@ikenxuan/qrcode';
+import { generate, generateSvg, generateDy, scan } from '@ikenxuan/qrcode';
 
 const png = await generate({ data: 'https://example.com' }, 'png');
 //     ^?
@@ -68,20 +68,24 @@ const png = await generate({ data: 'https://example.com' }, 'png');
 const svg = await generateSvg({ data: 'https://example.com' });
 //     ^?
 
+const dyPng = await generateDy({ data: 'https://v.douyin.com/utbKgTJRmlI/' });
+//     ^?
+
 const text = await scan(png);
 //     ^?
 ```
 
-默认入口 `@ikenxuan/qrcode` 面向 Node.js。`generate()`、`generateSvg()` 和 `scan()` 会返回 Promise，
+默认入口 `@ikenxuan/qrcode` 面向 Node.js。`generate()`、`generateSvg()`、`generateDy()` 和 `scan()` 会返回 Promise，
 内部通过 `worker_threads` 调用 WASM，避免长时间生成或扫描阻塞主线程。
 
 ## 浏览器调用
 
 ```ts twoslash title="browser.ts"
-import { generate, generateSvg, scan } from '@ikenxuan/qrcode/browser';
+import { generate, generateSvg, generateDy, scan } from '@ikenxuan/qrcode/browser';
 
 const png = await generate({ data: location.href }, 'png');
 const svg = await generateSvg({ data: location.href });
+const dyPng = await generateDy({ data: 'https://v.douyin.com/utbKgTJRmlI/' });
 const text = await scan(png);
 ```
 

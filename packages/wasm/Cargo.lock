@@ -587,6 +587,7 @@ dependencies = [
 name = "qrcode-wasm"
 version = "1.6.0"
 dependencies = [
+ "base64",
  "image",
  "qr-code-styling",
  "resvg",

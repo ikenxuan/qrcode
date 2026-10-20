@@ -1,6 +1,6 @@
 import { parentPort } from 'node:worker_threads'
-import { generateSync, generateSvgSync, scanSync, scanDetailedSync } from './sync.js'
-import type { Encoding, OutputFormat, QRCodeOptions } from './types.js'
+import { generateSync, generateSvgSync, generateDySync, generateDySvgSync, scanSync, scanDetailedSync } from './sync.js'
+import type { DyCodeOptions, Encoding, OutputFormat, QRCodeOptions } from './types.js'
 
 type WorkerRequest =
   | {
@@ -12,6 +12,16 @@ type WorkerRequest =
   | {
     method: 'generateSvg'
     options: QRCodeOptions
+  }
+  | {
+    method: 'generateDy'
+    options: DyCodeOptions
+    format: OutputFormat
+    encoding?: Encoding
+  }
+  | {
+    method: 'generateDySvg'
+    options: DyCodeOptions
   }
   | {
     method: 'scan'
@@ -52,6 +62,18 @@ parentPort?.on('message', (request: WorkerRequest) => {
         parentPort?.postMessage({
           ok: true,
           value: generateSvgSync(request.options),
+        })
+        break
+      case 'generateDy':
+        parentPort?.postMessage({
+          ok: true,
+          value: generateDySync(request.options, request.format, request.encoding),
+        })
+        break
+      case 'generateDySvg':
+        parentPort?.postMessage({
+          ok: true,
+          value: generateDySvgSync(request.options),
         })
         break
       case 'scan':

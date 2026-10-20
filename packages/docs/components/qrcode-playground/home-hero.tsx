@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button, Card, Tabs, toast } from '@heroui/react';
 import { FiCheckCircle, FiCopy, FiGithub } from 'react-icons/fi';
 import { SiRust } from 'react-icons/si';
+import { docsRoute, withBasePath } from '@/lib/shared';
 import { installCommands } from './constants';
 
 export function HomeHero() {
@@ -33,12 +34,12 @@ export function HomeHero() {
             @ikenxuan/qrcode
           </h1>
           <p className="max-w-2xl text-base leading-8 text-muted sm:text-lg">
-            高性能二维码生成与扫码工具。支持多种样式、透明背景、SVG/PNG/JPEG/WebP 输出，
+            高性能标准二维码与抖音码生成、扫码工具。支持多种样式、透明背景、SVG/PNG/JPEG/WebP 输出，
             并且 WASM 内联，浏览器和 Node.js 都能直接 import 使用。
           </p>
         </div>
         <div className="grid min-w-0 gap-3 sm:flex sm:flex-wrap sm:gap-4">
-          <Button className="w-full sm:min-w-36 sm:w-auto" size="lg" onPress={() => window.location.assign('/docs')}>
+          <Button className="w-full sm:min-w-36 sm:w-auto" size="lg" onPress={() => window.location.assign(withBasePath(docsRoute))}>
             <FiCheckCircle aria-hidden />
             阅读文档
           </Button>
@@ -92,13 +93,13 @@ export function HomeHero() {
             <SiRust aria-hidden className="size-6" />
           </div>
           <Card.Title>核心能力</Card.Title>
-          <Card.Description>一个包覆盖生成、样式化、下载与二维码识别。</Card.Description>
+          <Card.Description>一个包覆盖标准二维码与抖音码的生成、样式化、下载与识别。</Card.Description>
         </Card.Header>
         <Card.Content className="grid gap-3">
           {[
-            ['生成', '点阵、定位角、渐变、透明背景、Logo 嵌入'],
+            ['生成', '标准二维码完整样式系统，以及复刻官方版式的抖音码'],
             ['输出', 'PNG、JPEG、WebP、SVG，支持 Uint8Array 或 base64'],
-            ['扫码', 'PNG/JPEG/WebP 图片识别，未识别返回 null'],
+            ['扫码', '二维码与抖音码图片识别，未识别返回 null'],
           ].map(([title, text]) => (
             <div key={title} className="rounded-lg border border-border bg-rust-soft/45 p-4">
               <div className="text-sm font-semibold text-foreground">{title}</div>

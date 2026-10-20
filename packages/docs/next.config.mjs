@@ -18,6 +18,8 @@ const config = {
   },
   reactStrictMode: true,
   serverExternalPackages: ['typescript', 'twoslash'],
+  // 允许用独立目录启动第二个开发实例，避免和现有 `.next` 缓存互相覆盖。
+  distDir: process.env.NEXT_DIST_DIR || '.next',
 };
 
 export default withMDX(config);

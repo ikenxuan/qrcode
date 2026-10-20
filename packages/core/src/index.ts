@@ -7,12 +7,12 @@
  * @packageDocumentation
  */
 import { Worker } from 'node:worker_threads'
-import { DotType, CornerSquareType, CornerDotType, ShapeType, OutputFormat, type QRCodeOptions, type Encoding, type GenerateResult, type Gradient, type DotsOptions, type CornersSquareOptions, type CornersDotOptions, type ImageOptions, type BackgroundOptions, type ScanDetails } from './types.js'
-import { generateSync, generateSvgSync, scanSync, scanDetailedSync } from './sync.js'
+import { DotType, CornerSquareType, CornerDotType, ShapeType, OutputFormat, DyModuleStyle, DyFrameStyle, type QRCodeOptions, type DyCodeOptions, type Encoding, type GenerateResult, type Gradient, type DotsOptions, type CornersSquareOptions, type CornersDotOptions, type ImageOptions, type BackgroundOptions, type ScanDetails } from './types.js'
+import { generateSync, generateSvgSync, generateDySync, generateDySvgSync, scanSync, scanDetailedSync } from './sync.js'
 
-export { DotType, CornerSquareType, CornerDotType, ShapeType, OutputFormat }
-export { generateSync, generateSvgSync, scanSync, scanDetailedSync }
-export type { Gradient, DotsOptions, CornersSquareOptions, CornersDotOptions, ImageOptions, BackgroundOptions, QRCodeOptions, Encoding, GenerateResult, ScanPoint, ScanCircle, ScanDetails } from './types.js'
+export { DotType, CornerSquareType, CornerDotType, ShapeType, OutputFormat, DyModuleStyle, DyFrameStyle }
+export { generateSync, generateSvgSync, generateDySync, generateDySvgSync, scanSync, scanDetailedSync }
+export type { Gradient, DotsOptions, CornersSquareOptions, CornersDotOptions, ImageOptions, BackgroundOptions, QRCodeOptions, DyCodeOptions, Encoding, GenerateResult, ScanPoint, ScanCircle, ScanDetails } from './types.js'
 
 type WorkerRequest =
   | {
@@ -24,6 +24,16 @@ type WorkerRequest =
   | {
     method: 'generateSvg'
     options: QRCodeOptions
+  }
+  | {
+    method: 'generateDy'
+    options: DyCodeOptions
+    format: OutputFormat
+    encoding?: Encoding
+  }
+  | {
+    method: 'generateDySvg'
+    options: DyCodeOptions
   }
   | {
     method: 'scan'
@@ -132,6 +142,47 @@ export const generate = async <E extends Encoding = 'binary'> (
  */
 export const generateSvg = async (options: QRCodeOptions): Promise<string> => {
   return await runInWorker<string>({ method: 'generateSvg', options })
+}
+
+/**
+ * 异步生成抖音码。
+ *
+ * @remarks
+ * 抖音码（`BEF_CODE_TYPE_DY_CODE`）是抖音平台下发的圆形码。默认参数
+ * 复刻官方作品分享码版式：深色中心圆盘、四条数据环、三个定位圆环、
+ * 外圈装饰弧和中心播放图标。默认布局最多容纳 38 字节 UTF-8 文本。
+ *
+ * 在 Node.js 中通过 worker 线程执行 WASM 编码与渲染，避免阻塞主线程。
+ *
+ * @example
+ * ```ts
+ * import { generateDy } from '@ikenxuan/qrcode'
+ *
+ * const png = await generateDy({ data: 'https://v.douyin.com/utbKgTJRmlI/' }, 'png')
+ * const svg = await generateDySvg({ data: 'https://v.douyin.com/utbKgTJRmlI/' })
+ * ```
+ *
+ * @param options - 抖音码生成配置。
+ * @param format - 输出格式，支持 `'png'`、`'jpeg'`、`'webp'`、`'svg'`，默认 `'png'`。
+ * @param encoding - 编码方式，默认 `'binary'`。
+ * @returns Promise，resolve 后根据 encoding 返回 `Uint8Array`（binary）或 base64 `string`。
+ */
+export const generateDy = async <E extends Encoding = 'binary'> (
+  options: DyCodeOptions,
+  format: OutputFormat = 'png',
+  encoding?: E,
+): Promise<GenerateResult<E>> => {
+  return await runInWorker<GenerateResult<E>>({ method: 'generateDy', options, format, encoding })
+}
+
+/**
+ * 异步生成抖音码 SVG 字符串。
+ *
+ * @param options - 抖音码生成配置。
+ * @returns Promise，resolve 后返回 SVG 字符串。
+ */
+export const generateDySvg = async (options: DyCodeOptions): Promise<string> => {
+  return await runInWorker<string>({ method: 'generateDySvg', options })
 }
 
 /**

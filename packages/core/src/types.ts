@@ -60,6 +60,42 @@ export type OutputFormat = (typeof OutputFormat)[keyof typeof OutputFormat]
 /** 输出编码方式 */
 export type Encoding = 'binary' | 'base64'
 
+/** 抖音码数据模块形状 */
+export const DyModuleStyle = {
+  /** 圆角环形扇区（官方默认） */
+  Rounded: 'rounded',
+  /** 直角环形扇区 */
+  Square: 'square',
+  /** 胶囊形环形扇区 */
+  Pill: 'pill',
+} as const
+export type DyModuleStyle = (typeof DyModuleStyle)[keyof typeof DyModuleStyle]
+
+/** 抖音码外圈装饰样式 */
+export const DyFrameStyle = {
+  /** 四段圆弧（官方默认） */
+  Arcs: 'arcs',
+  /** 完整圆环 */
+  Ring: 'ring',
+  /** 断续弧段 */
+  Dashes: 'dashes',
+  /** 圆点串 */
+  Dots: 'dots',
+  /** 刻度线 */
+  Ticks: 'ticks',
+  /** 双层圆环 */
+  Double: 'double',
+  /** 分段圆环 */
+  Segments: 'segments',
+  /** 长短交替弧段 */
+  Spark: 'spark',
+  /** 双轨圆点串 */
+  Orbit: 'orbit',
+  /** 齿轮环 */
+  Gear: 'gear',
+} as const
+export type DyFrameStyle = (typeof DyFrameStyle)[keyof typeof DyFrameStyle]
+
 /** 扫描结果中的定位点，坐标单位为原图像素 */
 export interface ScanPoint {
   x: number
@@ -218,4 +254,77 @@ export interface QRCodeOptions {
   image?: Uint8Array
   /** Logo 图片嵌入配置，需与 {@link image} 配合使用 */
   imageOptions?: ImageOptions
+}
+
+/**
+ * 抖音码生成配置项。
+ *
+ * 抖音码（`BEF_CODE_TYPE_DY_CODE`）是抖音平台下发的圆形码：四条数据环、
+ * 中心圆盘、三个定位圆环和外圈装饰弧。默认参数复刻官方作品分享码的
+ * 默认样式，生成的图片可被 {@link scan} 解回原文。
+ *
+ * 默认布局最多容纳 38 字节 UTF-8 文本（例如
+ * `https://v.douyin.com/utbKgTJRmlI/`）。
+ */
+export interface DyCodeOptions {
+  /** 要编码的数据内容（UTF-8 最多 38 字节） */
+  data: string
+  /** 输出图片边长（像素）。提供后会反推 `scale` */
+  size?: number
+  /** 每个设计单位对应的像素数，默认 `1.833` */
+  scale?: number
+  /** 图片边距（像素），默认 `16` */
+  margin?: number
+  /** 前景色：数据环、定位环、外框、中心圆盘，默认 `#161823` */
+  darkColor?: CSSColor
+  /** 背景色：背景、中心图标，默认 `#ffffff` */
+  lightColor?: CSSColor
+  /**
+   * 是否使用透明背景，默认 `false`。
+   *
+   * PNG / WebP / SVG 会保留 alpha 通道；JPEG 不支持透明，透明区域会填充白色。
+   */
+  transparent?: boolean
+  /** 数据模块形状，默认 `rounded` */
+  moduleStyle?: DyModuleStyle
+  /** `rounded` 模式的圆角半径（设计单位），默认 `1.2` */
+  moduleRadius?: number
+  /** 是否绘制外圈装饰，默认 `true` */
+  frame?: boolean
+  /** 外圈样式，默认 `arcs` */
+  frameStyle?: DyFrameStyle
+  /** 外圈径向宽度（设计单位），范围 `1` ~ `16`，默认 `9` */
+  frameWidth?: number
+  /** 外圈端点的圆角半径（设计单位），默认 `0`；圆环类样式在缺口处同样生效 */
+  frameRadius?: number
+  /** `arcs` 样式每段弧的角度（度），范围 `4` ~ `120`，默认 `64` */
+  frameSpan?: number
+  /** `dashes` / `dots` / `ticks` 样式的元素数量，范围 `4` ~ `120`，默认 `24` */
+  frameCount?: number
+  /** 是否绘制中心播放图标，默认 `true`；提供 {@link centerImage} 时由图片替代 */
+  logo?: boolean
+  /**
+   * 覆盖整个中心圆盘的圆形图片**二进制数据**（非 URL / 路径）。
+   *
+   * 图片会按 cover 方式居中裁剪成圆形，半径与官方中心圆盘一致。
+   * 提供后不再绘制播放图标；生成结果仍可被 {@link scan} 识别。
+   */
+  centerImage?: Uint8Array
+  /** 是否绘制右上角图片槽位；仅在提供 {@link badgeImage} 时生效，默认 `true` */
+  badge?: boolean
+  /** 右上角圆形图片的半径（设计单位），默认 `21` */
+  badgeRadius?: number
+  /**
+   * 右上角圆形图片**二进制数据**（非 URL / 路径）。
+   *
+   * 图片会按 cover 方式居中裁剪并裁成圆形，放到 315° 方向。
+   * 未提供时右上角保持空白。
+   */
+  badgeImage?: Uint8Array
+  /** 格式码 1..6，默认 `5`（官方样本） */
+  formatCode?: number
+  /** 参数 0..63，低 4 位决定掩码 id，默认 `20`（掩码 4） */
+  param?: number
+  /** 参数字段是否使用 `0x25412` 异或形式，默认 `true` */
+  fieldXor?: boolean
 }

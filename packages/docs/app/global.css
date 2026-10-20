@@ -58,36 +58,55 @@ html>body[data-scroll-locked] {
 }
 
 .dark {
-  --rust: oklch(0.72 0.12 55);
+  --rust: oklch(0.74 0.13 55);
   --rust-foreground: oklch(0.16 0.03 48);
-  --rust-soft: oklch(0.30 0.045 48);
+  --rust-soft: oklch(0.34 0.05 48);
   --oxide: oklch(0.90 0.035 63);
   --copper: oklch(0.77 0.11 56);
-  --background: oklch(0.16 0.024 48);
+  --background: oklch(0.135 0.02 48);
   --foreground: oklch(0.94 0.025 67);
-  --surface: oklch(0.20 0.03 48);
+  --surface: oklch(0.205 0.03 48);
   --surface-foreground: var(--foreground);
-  --surface-secondary: oklch(0.24 0.035 48);
+  --surface-secondary: oklch(0.255 0.036 48);
   --surface-secondary-foreground: var(--foreground);
-  --surface-tertiary: oklch(0.29 0.04 48);
+  --surface-tertiary: oklch(0.31 0.042 48);
   --surface-tertiary-foreground: var(--foreground);
-  --overlay: oklch(0.22 0.03 48);
+  --overlay: oklch(0.23 0.032 48);
   --overlay-foreground: var(--foreground);
   --accent: var(--rust);
   --accent-foreground: var(--rust-foreground);
   --accent-soft: color-mix(in oklch, var(--rust) 18%, transparent);
   --accent-soft-foreground: oklch(0.90 0.055 63);
-  --accent-hover: oklch(0.78 0.12 55);
-  --border: oklch(0.42 0.05 48 / 58%);
-  --separator: oklch(0.34 0.038 48);
-  --muted: oklch(0.73 0.03 63);
+  --accent-hover: oklch(0.80 0.13 55);
+  --border: oklch(0.44 0.05 48 / 72%);
+  --separator: oklch(0.36 0.04 48);
+  --muted: oklch(0.75 0.03 63);
   --focus: var(--rust);
   --link: var(--rust);
-  --field-background: oklch(0.23 0.03 48);
-  --field-hover: oklch(0.27 0.035 48);
-  --field-border: oklch(0.42 0.05 48 / 50%);
-  --field-border-hover: oklch(0.55 0.07 50 / 70%);
+  --default: oklch(0.285 0.03 48);
+  --default-foreground: var(--foreground);
+  --default-hover: oklch(0.33 0.034 48);
+  --default-soft: color-mix(in oklab, var(--default) 60%, transparent);
+  --default-soft-foreground: var(--default-foreground);
+  --default-soft-hover: color-mix(in oklab, var(--default) 70%, transparent);
+  --segment: oklch(0.32 0.035 48);
+  --segment-foreground: var(--foreground);
+  --field-background: oklch(0.265 0.032 48);
+  --field-foreground: var(--foreground);
+  --field-placeholder: var(--muted);
+  --field-hover: oklch(0.30 0.036 48);
+  --field-border: oklch(0.50 0.05 48 / 65%);
+  --field-border-hover: oklch(0.62 0.07 50 / 80%);
   --field-border-focus: var(--rust);
+  --surface-hover: color-mix(in oklab, var(--surface) 92%, var(--surface-foreground) 8%);
+  --surface-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 1px 2px 0 rgb(0 0 0 / 0.35),
+    0 18px 40px -28px rgb(0 0 0 / 0.55);
+  --overlay-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.04),
+    0 16px 40px -20px rgb(0 0 0 / 0.7);
+  --scrollbar-thumb: color-mix(in oklch, var(--foreground) 20%, transparent);
   --fd-primary: var(--rust);
   --fd-primary-foreground: var(--rust-foreground);
 }

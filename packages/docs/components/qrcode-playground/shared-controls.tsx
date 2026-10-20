@@ -84,15 +84,18 @@ export const OptionSelect = <T extends string,>({
   value,
   options,
   onChange,
+  isDisabled,
 }: {
   label: string;
   value: T;
   options: Array<SelectOption<T>>;
   onChange: (value: T) => void;
+  isDisabled?: boolean;
 }) => {
   return (
     <Select
       fullWidth
+      isDisabled={isDisabled}
       name={label}
       placeholder={label}
       value={value}
@@ -136,6 +139,7 @@ export const NumberSetting = ({
   step,
   onChange,
   describe,
+  isDisabled,
 }: {
   label: string;
   value: number;
@@ -144,10 +148,12 @@ export const NumberSetting = ({
   step: number;
   onChange: (value: number) => void;
   describe?: (value: number) => string;
+  isDisabled?: boolean;
 }) => {
   return (
     <NumberField
       fullWidth
+      isDisabled={isDisabled}
       maxValue={maxValue}
       minValue={minValue}
       name={label}

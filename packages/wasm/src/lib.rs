@@ -14,6 +14,9 @@ mod dy;
 mod logo;
 mod scan;
 use color::parse_color;
+use dy::{
+    encode_text, render_raster, render_svg as render_dy_svg, EncodeOptions, RenderOptions,
+};
 use logo::round_logo_corners;
 use scan::{scan_qr, scan_qr_detailed};
 
@@ -81,6 +84,35 @@ struct QRCodeOpts {
     background_options: Option<BackgroundOpts>,
     image: Option<Vec<u8>>,
     image_options: Option<ImgOpts>,
+}
+
+/// 抖音码生成配置（从 JS 侧反序列化）。
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DyCodeOpts {
+    data: String,
+    format_code: Option<u32>,
+    param: Option<u32>,
+    field_xor: Option<bool>,
+    size: Option<u32>,
+    scale: Option<f64>,
+    margin: Option<u32>,
+    dark_color: Option<String>,
+    light_color: Option<String>,
+    transparent: Option<bool>,
+    module_style: Option<String>,
+    module_radius: Option<f64>,
+    frame: Option<bool>,
+    frame_style: Option<String>,
+    frame_width: Option<f64>,
+    frame_radius: Option<f64>,
+    frame_span: Option<f64>,
+    frame_count: Option<u32>,
+    logo: Option<bool>,
+    center_image: Option<Vec<u8>>,
+    badge: Option<bool>,
+    badge_radius: Option<f64>,
+    badge_image: Option<Vec<u8>>,
 }
 
 // ─── 类型映射 ──────────────────────────────────────────────────────────────────
@@ -319,4 +351,72 @@ pub fn scan(image_data: &[u8]) -> Option<String> {
 pub fn scan_detailed(image_data: &[u8]) -> Option<JsValue> {
     let outcome = scan_qr_detailed(image_data)?;
     serde_wasm_bindgen::to_value(&outcome).ok()
+}
+
+/// 解析抖音码生成参数。
+fn dy_settings(options: JsValue) -> Result<(String, EncodeOptions, RenderOptions), JsError> {
+    let opts: DyCodeOpts =
+        serde_wasm_bindgen::from_value(options).map_err(|e| JsError::new(&e.to_string()))?;
+
+    let defaults = RenderOptions::default();
+    let render = RenderOptions {
+        scale: opts.scale,
+        size: opts.size,
+        margin: opts.margin.unwrap_or(defaults.margin),
+        dark_color: opts.dark_color.unwrap_or(defaults.dark_color),
+        light_color: opts.light_color.unwrap_or(defaults.light_color),
+        transparent: opts.transparent.unwrap_or(defaults.transparent),
+        module_style: opts.module_style.unwrap_or(defaults.module_style),
+        module_radius: opts.module_radius.unwrap_or(defaults.module_radius),
+        frame: opts.frame.unwrap_or(defaults.frame),
+        frame_style: opts.frame_style.unwrap_or(defaults.frame_style),
+        frame_width: opts.frame_width.unwrap_or(defaults.frame_width),
+        frame_radius: opts.frame_radius.unwrap_or(defaults.frame_radius),
+        frame_span: opts.frame_span.unwrap_or(defaults.frame_span),
+        frame_count: opts.frame_count.unwrap_or(defaults.frame_count),
+        logo: opts.logo.unwrap_or(defaults.logo),
+        center_image: opts.center_image,
+        badge: opts.badge.unwrap_or(defaults.badge),
+        badge_radius: opts.badge_radius.unwrap_or(defaults.badge_radius),
+        badge_image: opts.badge_image,
+    };
+    let encode = EncodeOptions {
+        format_code: opts.format_code.unwrap_or(5) as usize,
+        param: opts.param.unwrap_or(20) as usize,
+        field_xor: opts.field_xor.unwrap_or(true),
+    };
+
+    Ok((opts.data, encode, render))
+}
+
+/// 生成抖音码位图（PNG / JPEG / WebP）。
+///
+/// 默认复刻官方作品分享码版式：深色中心圆盘、四条数据环、三个定位圆环、
+/// 四段外框装饰弧和中心播放图标。默认格式码 5、参数 20（掩码 4），
+/// 消息容量 40 字节，UTF-8 文本最多 38 字节。
+///
+/// 可通过 `size` / `scale` / `margin` / `darkColor` / `lightColor` /
+/// `transparent` / `moduleStyle` / `moduleRadius` / `frame` / `frameStyle` /
+/// `frameWidth` / `frameRadius` / `frameSpan` / `frameCount` / `logo` /
+/// `centerImage` / `badgeRadius` / `badgeImage` 调整观感。
+#[wasm_bindgen(js_name = "generateDy")]
+pub fn generate_dy(options: JsValue, format: &str) -> Result<Vec<u8>, JsError> {
+    let (data, encode, render) = dy_settings(options)?;
+    let encoded = encode_text(&data, encode).map_err(|e| JsError::new(&e))?;
+
+    if format == "svg" {
+        return render_dy_svg(&encoded, &render)
+            .map(String::into_bytes)
+            .map_err(|e| JsError::new(&e));
+    }
+
+    render_raster(&encoded, &render, format).map_err(|e| JsError::new(&e))
+}
+
+/// 生成抖音码 SVG 字符串。
+#[wasm_bindgen(js_name = "generateDySvg")]
+pub fn generate_dy_svg(options: JsValue) -> Result<String, JsError> {
+    let (data, encode, render) = dy_settings(options)?;
+    let encoded = encode_text(&data, encode).map_err(|e| JsError::new(&e))?;
+    render_dy_svg(&encoded, &render).map_err(|e| JsError::new(&e))
 }
