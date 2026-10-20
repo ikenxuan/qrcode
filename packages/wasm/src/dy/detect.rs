@@ -12,10 +12,18 @@ use std::collections::VecDeque;
 
 use image::GrayImage;
 
-use super::layout::{DISK_RADIUS, MAX_RINGS, RING_MODULES, RING_RADII_5};
+use super::layout::{
+    DISK_RADIUS, DISK_RADIUS_5, MAX_RINGS, RING_MODULES, RING_RADII_5,
+};
 
 /// 码心到定位圆环中心的距离（设计单位）。
 pub const FINDER_DISTANCE: f64 = 100.0;
+
+/// 四环与五环中心圆盘半径的中点。
+///
+/// 解码器在读到格式码之前不知道是四环还是五环，用这个中点做尺度基准、
+/// 再把搜索范围放宽到 ±8%，就能同时覆盖两种圆盘半径。
+const DISK_SCALE_BASE: f64 = (DISK_RADIUS + DISK_RADIUS_5) / 2.0;
 
 /// 名片码白色圆盘的设计半径（兜底尺度锚点）。
 pub const BRIGHT_DISK_RADIUS: f64 = 121.0;
@@ -323,18 +331,20 @@ pub fn find_finders_global(gray: &GrayImage) -> Option<FinderResult> {
             continue;
         }
         let longest = stat.width.max(stat.height) as f64;
-        if !(0.035 * min_side <= longest && longest <= 0.13 * min_side) {
+        // 定位圆环外径约 22 个设计单位。下限用绝对值，避免大截图里
+        // 几十像素的定位环被“整图比例”过滤掉；上限仍按比例排除外框。
+        if !(6.0 <= longest && longest <= 0.25 * min_side) {
             continue;
         }
         if stat.height == 0 {
             continue;
         }
         let aspect = stat.width as f64 / stat.height as f64;
-        if !(0.6 <= aspect && aspect <= 1.6) {
+        if !(0.75..=1.33).contains(&aspect) {
             continue;
         }
         let fill = stat.area as f64 / (stat.width * stat.height) as f64;
-        if !(0.3..=0.8).contains(&fill) {
+        if !(0.3..=0.62).contains(&fill) {
             continue;
         }
         candidates.push(FinderCandidate {
@@ -379,6 +389,18 @@ pub fn find_finders_global(gray: &GrayImage) -> Option<FinderResult> {
                 if cc.0 < 0.0 || cc.1 < 0.0 || cc.0 > width as f64 || cc.1 > height as f64 {
                     continue;
                 }
+                // 三个定位环到圆心的距离应当一致；这一条同时排除
+                // 近似共线、外心飘远的组合。
+                let distances = [
+                    (points[0].0 - cc.0).hypot(points[0].1 - cc.1),
+                    (points[1].0 - cc.0).hypot(points[1].1 - cc.1),
+                    (points[2].0 - cc.0).hypot(points[2].1 - cc.1),
+                ];
+                let distance_max = distances.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                let distance_min = distances.iter().copied().fold(f64::INFINITY, f64::min);
+                if distance_min <= 0.0 || distance_max / distance_min > 1.08 {
+                    continue;
+                }
 
                 let mut angles = [
                     (points[0].1 - cc.1).atan2(points[0].0 - cc.0),
@@ -392,18 +414,14 @@ pub fn find_finders_global(gray: &GrayImage) -> Option<FinderResult> {
                     (angles[2] - angles[1]).rem_euclid(tau),
                     (angles[0] + tau - angles[2]).rem_euclid(tau),
                 ];
-                let min_gap = gaps.iter().copied().fold(f64::INFINITY, f64::min);
-                let max_gap = gaps.iter().copied().fold(f64::NEG_INFINITY, f64::max);
                 // 三个定位环在 45° / 135° / 225°，间隔约为 90°、90°、180°。
-                if min_gap < 60.0_f64.to_radians() || max_gap < 150.0_f64.to_radians() {
+                if gaps.iter().copied().fold(f64::INFINITY, f64::min)
+                    < 30.0_f64.to_radians()
+                {
                     continue;
                 }
 
-                let distance = trio
-                    .iter()
-                    .map(|item| (item.x - cc.0).hypot(item.y - cc.1))
-                    .sum::<f64>()
-                    / 3.0;
+                let distance = distances.iter().sum::<f64>() / 3.0;
                 let score = trio.iter().map(|item| item.area).sum::<u64>();
                 if best.as_ref().is_none_or(|current| score > current.0) {
                     best = Some((score, cc, distance, points));
@@ -495,8 +513,8 @@ pub fn locator_candidates(gray: &GrayImage) -> Vec<Locator> {
         let radius = (found.width + found.height) as f64 / 4.0;
         locators.push(Locator {
             center: (found.cx, found.cy),
-            scale_base: radius / DISK_RADIUS,
-            span: 0.03,
+            scale_base: radius / DISK_SCALE_BASE,
+            span: 0.08,
             steps: 13,
             points: vec![(found.cx, found.cy)],
         });
@@ -514,9 +532,9 @@ pub fn locator_candidates(gray: &GrayImage) -> Vec<Locator> {
         let radius = (disk.width + disk.height) as f64 / 4.0;
         locators.push(Locator {
             center: (disk.cx, disk.cy),
-            scale_base: radius / DISK_RADIUS,
-            span: 0.04,
-            steps: 9,
+            scale_base: radius / DISK_SCALE_BASE,
+            span: 0.08,
+            steps: 13,
             points: vec![(disk.cx, disk.cy)],
         });
     }
@@ -591,11 +609,11 @@ fn sample_bilinear(gray: &GrayImage, x: f64, y: f64) -> f64 {
         + v11 * fx * fy
 }
 
-/// 在一条环上采样 `n` 个模块中心。
+/// 在一条环上采样 `n` 个模块中心，返回各模块的平均灰度。
 ///
 /// 每个模块沿半径方向在 `+/- radial_span` 像素内取 `radial_samples` 个点，
-/// 求平均后以 128 为阈值判为暗（1）或亮（0）。
-pub fn sample_ring(
+/// 求平均以抵消抗锯齿和轻微错位。是否判为暗由 `sample_rings` 统一决定。
+fn sample_ring_averages(
     gray: &GrayImage,
     cx: f64,
     cy: f64,
@@ -603,7 +621,7 @@ pub fn sample_ring(
     n: usize,
     radial_span: f64,
     radial_samples: usize,
-) -> Vec<u8> {
+) -> Vec<f64> {
     let mut sums = vec![0.0f64; n];
     for s in 0..radial_samples {
         let r = if radial_samples == 1 {
@@ -619,25 +637,88 @@ pub fn sample_ring(
         }
     }
 
-    sums.iter()
-        .map(|&sum| u8::from(sum / (radial_samples as f64) < 128.0))
-        .collect()
+    let count = radial_samples as f64;
+    sums.iter().map(|&sum| sum / count).collect()
 }
 
 /// 按当前尺度采样数据环。
 ///
 /// 固定采样五条环：四环版式会忽略多出的第五条，五环版式（格式码 6）
 /// 则需要它。每条环的模块数由版本决定，版本 3 为 120。
+///
+/// 阈值不写死 128，而是对全部采样值做 Otsu 分割：不同配色（例如深玫红
+/// 配浅粉）在灰度化后可能整体偏暗或偏亮，固定阈值会把大量模块判反。
 pub fn sample_rings(
     gray: &GrayImage,
     cx: f64,
     cy: f64,
     scale: f64,
 ) -> [[u8; RING_MODULES]; MAX_RINGS] {
-    let mut rings = [[0u8; RING_MODULES]; MAX_RINGS];
-    for (ring, &ring_radius) in rings.iter_mut().zip(RING_RADII_5.iter()) {
-        let sampled = sample_ring(gray, cx, cy, ring_radius * scale, RING_MODULES, 1.8, 7);
+    let mut averages = [[0f64; RING_MODULES]; MAX_RINGS];
+    for (ring, &ring_radius) in averages.iter_mut().zip(RING_RADII_5.iter()) {
+        let sampled = sample_ring_averages(gray, cx, cy, ring_radius * scale, RING_MODULES, 1.8, 7);
         ring.copy_from_slice(&sampled);
+    }
+
+    let threshold = otsu_threshold(&averages);
+    let mut rings = [[0u8; RING_MODULES]; MAX_RINGS];
+    for (ring, values) in rings.iter_mut().zip(averages.iter()) {
+        for (module, &value) in ring.iter_mut().zip(values.iter()) {
+            *module = u8::from(value < threshold);
+        }
     }
     rings
 }
+
+/// 对环采样值做 Otsu 阈值分割；对比度不足时退回 128。
+fn otsu_threshold(values: &[[f64; RING_MODULES]; MAX_RINGS]) -> f64 {
+    let mut histogram = [0u32; 256];
+    let mut total = 0u32;
+    for value in values.iter().flatten() {
+        histogram[value.round().clamp(0.0, 255.0) as usize] += 1;
+        total += 1;
+    }
+    if total == 0 {
+        return 128.0;
+    }
+
+    // 先看 10% / 90% 分位：几乎全暗或全亮时没有可分割的两类。
+    let mut sorted: Vec<f64> = values.iter().flatten().copied().collect();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+    let low = sorted[sorted.len() / 10];
+    let high = sorted[sorted.len() * 9 / 10];
+    if high - low < 24.0 {
+        return 128.0;
+    }
+
+    let sum_all: f64 = histogram
+        .iter()
+        .enumerate()
+        .map(|(level, &count)| level as f64 * count as f64)
+        .sum();
+    let mut weight_dark = 0u32;
+    let mut sum_dark = 0.0f64;
+    let mut best_variance = -1.0f64;
+    let mut threshold = 128.0f64;
+    for (level, &count) in histogram.iter().enumerate() {
+        weight_dark += count;
+        if weight_dark == 0 {
+            continue;
+        }
+        let weight_light = total - weight_dark;
+        if weight_light == 0 {
+            break;
+        }
+        sum_dark += level as f64 * count as f64;
+        let mean_dark = sum_dark / weight_dark as f64;
+        let mean_light = (sum_all - sum_dark) / weight_light as f64;
+        let variance =
+            weight_dark as f64 * weight_light as f64 * (mean_dark - mean_light).powi(2);
+        if variance > best_variance {
+            best_variance = variance;
+            threshold = level as f64 + 0.5;
+        }
+    }
+    threshold
+}
+

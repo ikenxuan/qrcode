@@ -146,7 +146,7 @@ fn scan_gray_detailed(gray: &GrayImage) -> Option<LocatedText> {
 ///
 /// 直接 `to_luma8()` 会忽略 alpha 通道，导致透明像素变为黑色，
 /// 与黑色 QR 码点阵无法区分。此函数先做 alpha compositing 再转灰度。
-fn to_gray_with_white_bg(img: &DynamicImage) -> GrayImage {
+pub(crate) fn to_gray_with_white_bg(img: &DynamicImage) -> GrayImage {
     let rgba = img.to_rgba8();
     let (w, h) = rgba.dimensions();
     GrayImage::from_fn(w, h, |x, y| {

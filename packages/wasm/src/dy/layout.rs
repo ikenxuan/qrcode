@@ -346,11 +346,13 @@ pub fn layout_for_format(format_code: usize) -> Option<&'static DataLayout> {
 }
 
 /// 默认版式（格式码 5，四环）。
+#[cfg(test)]
 pub fn layout_data() -> &'static DataLayout {
     layout_for_format(5).expect("格式码 5 的版式")
 }
 
 /// 构造默认版式的有效位掩码（供测试使用）。
+#[cfg(test)]
 pub fn data_valid_masks() -> DataLayout {
     layout_data().clone()
 }

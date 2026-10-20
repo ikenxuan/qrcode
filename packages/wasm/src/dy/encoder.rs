@@ -65,6 +65,7 @@ pub struct EncodedCode {
 
 impl EncodedCode {
     /// 数据环数量。
+    #[cfg(test)]
     pub fn ring_count(&self) -> usize {
         self.rings.len()
     }

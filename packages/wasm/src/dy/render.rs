@@ -1422,6 +1422,69 @@ mod tests {
         assert_eq!(decoded.text, text);
     }
 
+    /// 把码缩放到指定边长，贴进一张模拟文档页的截图里。
+    ///
+    /// 页面上还有左侧的深色文字条，用来验证定位器不会被其它暗色内容带偏。
+    fn page_screenshot(code_png: &[u8], side: u32) -> image::GrayImage {
+        let code = image::load_from_memory(code_png)
+            .expect("valid png")
+            .to_rgba8();
+        let scaled = image::imageops::resize(
+            &code,
+            side,
+            side,
+            image::imageops::FilterType::Lanczos3,
+        );
+        let mut page =
+            image::RgbaImage::from_pixel(2300, 1392, image::Rgba([247, 244, 234, 255]));
+        for index in 0..17u32 {
+            let x = 492;
+            let y = 310 + index * 44;
+            let width = 300 + (index * 97) % 210;
+            for py in y..y + 10 {
+                for px in x..x + width {
+                    page.put_pixel(px, py, image::Rgba([75, 74, 68, 255]));
+                }
+            }
+        }
+        image::imageops::overlay(&mut page, &scaled, 1120, 300);
+        crate::scan::to_gray_with_white_bg(&image::DynamicImage::ImageRgba8(page))
+    }
+
+    #[test]
+    fn five_ring_code_decodes_in_large_page_screenshot() {
+        let text = "mcp不喜欢的主要原因就是上下文太长";
+        let encoded = encode_text(text, EncodeOptions::default()).expect("encodable");
+        assert_eq!(encoded.rings.len(), 5);
+        let png = render_png(&encoded, &RenderOptions::default()).expect("renderable");
+
+        for side in [160, 240, 320, 432] {
+            let gray = page_screenshot(&png, side);
+            let decoded = crate::dy::decode_gray_detailed(&gray)
+                .unwrap_or_else(|| panic!("{side}px 的截图应能解码"));
+            assert_eq!(decoded.text, text, "{side}px");
+        }
+    }
+
+    #[test]
+    fn colored_five_ring_code_decodes_in_large_page_screenshot() {
+        let text = "mcp不喜欢的主要原因就是上下文太长";
+        let encoded = encode_text(text, EncodeOptions::default()).expect("encodable");
+        let options = RenderOptions {
+            dark_color: "#831843".to_string(),
+            light_color: "#fdf2f8".to_string(),
+            module_style: "pill".to_string(),
+            frame_style: "dots".to_string(),
+            frame_count: 32,
+            ..RenderOptions::default()
+        };
+        let png = render_png(&encoded, &options).expect("renderable");
+
+        let gray = page_screenshot(&png, 160);
+        let decoded = crate::dy::decode_gray_detailed(&gray).expect("decodable");
+        assert_eq!(decoded.text, text);
+    }
+
     #[test]
     fn five_ring_uses_smaller_disk_and_background_gap() {
         let encoded = encode_text(
