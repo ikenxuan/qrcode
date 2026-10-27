@@ -41,9 +41,9 @@ jobs:
           workdir="$(mktemp -d)"
           cd "$workdir"
 
-          # 直接按 dist.tarball 下载，npm pack 的静默输出在 runner 上不可靠且会吞掉报错
-          tarball_url="$(npm view "@ikenxuan/qrcode@$VERSION" dist.tarball --registry=https://registry.npmjs.org)"
-          curl -fsSL "$tarball_url" -o package.tgz
+          # setup-node 会写 @ikenxuan:registry=GPR，作用域包会忽略 --registry，
+          # 所以直接按 npm 的 tarball 路径规则从 npmjs 下载
+          curl -fsSL "https://registry.npmjs.org/@ikenxuan/qrcode/-/qrcode-${VERSION}.tgz" -o package.tgz
           tar -xzf package.tgz
           cd package
 
