@@ -1,0 +1,55 @@
+name: Mirror to GitHub Packages
+
+# 把 npm 上已发布的 @ikenxuan/qrcode 版本补镜像到 GitHub Packages。
+# release.yml 只负责当次发布；这个 workflow 用于回填历史版本（例如 kkk 钉住的 1.6.0）
+# 或 release.yml 的 GPR 步骤失败后重试。
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'npm 上已发布的 @ikenxuan/qrcode 版本，例如 1.6.0'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://npm.pkg.github.com'
+
+      - name: Publish to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          npm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+
+          if npm view "@ikenxuan/qrcode@$VERSION" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "@ikenxuan/qrcode@$VERSION is already published to GitHub Packages."
+            exit 0
+          fi
+
+          workdir="$(mktemp -d)"
+          cd "$workdir"
+          tarball="$(npm pack "@ikenxuan/qrcode@$VERSION" --registry=https://registry.npmjs.org --silent | tail -1)"
+          tar -xzf "$tarball"
+          cd package
+
+          # 包内 publishConfig.registry 指向 npmjs，会覆盖 --registry，先改成 GPR
+          node -e "
+            const fs = require('fs');
+            const pkg = require('./package.json');
+            pkg.publishConfig = { ...pkg.publishConfig, registry: 'https://npm.pkg.github.com/' };
+            fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          npm publish --access public --registry=https://npm.pkg.github.com/

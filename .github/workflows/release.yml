@@ -47,6 +47,7 @@ jobs:
       issues: write
       pull-requests: write
       id-token: write
+      packages: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -153,6 +154,32 @@ jobs:
 
           npm publish --provenance --access public
         working-directory: packages/core
+
+      # npm 是主发布源；GPR 只做镜像，失败不影响 npm 已发出的版本，重跑本 workflow 幂等续上。
+      # kkk 的 @ikenxuan 作用域映射到 GPR，缺了这个镜像 pnpm 会去 GPR 找 @ikenxuan/qrcode 而 404。
+      - name: Publish to GitHub Packages
+        run: |
+          version="${{ steps.package_version.outputs.version }}"
+          # setup-node 只给 npmjs 写了 token，这里补 GPR 的
+          npm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+
+          if npm view "@ikenxuan/qrcode@$version" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "@ikenxuan/qrcode@$version is already published to GitHub Packages."
+            exit 0
+          fi
+
+          # 包内 publishConfig.registry 指向 npmjs，会覆盖 --registry，先改成 GPR
+          node -e "
+            const fs = require('fs');
+            const pkg = require('./package.json');
+            pkg.publishConfig = { ...pkg.publishConfig, registry: 'https://npm.pkg.github.com/' };
+            fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          npm publish --access public --registry=https://npm.pkg.github.com/
+        working-directory: packages/core
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sync to Taobao Mirror
         run: |
