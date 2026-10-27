@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.8.1](https://github.com/ikenxuan/qrcode/compare/v1.8.0...v1.8.1) (2026-10-27)
+
+
+### 🎡 持续集成
+
+* 修复 GPR 镜像脚本取包方式 ([c96631f](https://github.com/ikenxuan/qrcode/commit/c96631f29359a9595416fbeafdecdb7e2c3b696d))
+* 修正 GPR 镜像下载源 ([6211995](https://github.com/ikenxuan/qrcode/commit/62119959fe8e61c32f90b38415095646bf035b43))
+* 发布镜像到 GitHub Packages ([43ab817](https://github.com/ikenxuan/qrcode/commit/43ab81758d51a376e48b146e575f1dcd5fff94c4))
+
 ## [1.8.0](https://github.com/ikenxuan/qrcode/compare/v1.7.0...v1.8.0) (2026-10-20)
 
 
